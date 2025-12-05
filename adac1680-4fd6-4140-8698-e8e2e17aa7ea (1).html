@@ -1104,3 +1104,1242 @@
   </script>
 </body>
 </html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SynQc TDS · Control Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg-main: #050711;
+      --bg-panel: #101320;
+      --bg-panel-alt: #15192a;
+      --accent: #4f9cff;
+      --accent-soft: rgba(79, 156, 255, 0.15);
+      --accent-strong: #ffcc4f;
+      --danger: #ff5468;
+      --border-subtle: #24283b;
+      --text-main: #f5f5f7;
+      --text-muted: #a4a7bd;
+      --text-soft: #777a90;
+      --radius-lg: 14px;
+      --radius-md: 10px;
+      --radius-pill: 999px;
+      --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.45);
+      --shadow-subtle: 0 0 0 1px rgba(255, 255, 255, 0.02);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #15193a 0, #050711 52%, #02030a 100%);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: 0.02em; }
+    p { margin: 0; }
+
+    header.app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 1.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(12px);
+      background: linear-gradient(to right, rgba(5, 7, 17, 0.96), rgba(8, 11, 30, 0.96));
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .logo-block { display: flex; align-items: center; gap: 0.9rem; }
+    .logo-dot {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #ffffff, #4f9cff 40%, #050711 80%);
+      box-shadow: 0 0 40px rgba(79, 156, 255, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.12);
+    }
+    .logo-block h1 { font-size: 1.1rem; }
+    .logo-block p { font-size: 0.78rem; color: var(--text-soft); margin-top: 0.1rem; }
+
+    .session-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.2rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .session-info span { color: var(--text-main); font-weight: 500; }
+    .status-pill {
+      padding: 0.2rem 0.7rem;
+      border-radius: var(--radius-pill);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.72rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent); box-shadow: 0 0 7px rgba(79, 156, 255, 0.9);
+    }
+
+    #globalStatus {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 1.25rem;
+      padding: 0.4rem 0.9rem;
+      border-radius: var(--radius-pill);
+      background: rgba(12, 16, 36, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      max-width: 90vw;
+      z-index: 40;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #globalStatus.visible { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+    #globalStatus[data-level="ok"] { border-color: rgba(79, 156, 255, 0.6); color: #b9d7ff; }
+    #globalStatus[data-level="error"] { border-color: rgba(255, 84, 104, 0.7); color: #ffc1cb; }
+    #globalStatus[data-level="warn"] { border-color: rgba(255, 204, 79, 0.7); color: #ffe9b4; }
+
+    main.app-grid {
+      display: grid;
+      grid-template-columns: minmax(260px, 280px) minmax(320px, 3fr) minmax(260px, 320px);
+      grid-auto-rows: minmax(160px, auto);
+      gap: 1rem;
+      padding: 1rem 1.5rem 2.5rem;
+    }
+
+    .panel {
+      background: radial-gradient(circle at top left, #1c2140 0, #101320 42%, #070816 100%);
+      border-radius: var(--radius-lg);
+      padding: 0.9rem 1rem 1rem;
+      box-shadow: var(--shadow-soft), var(--shadow-subtle);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .panel:nth-of-type(1) { grid-row: span 2; }
+    .panel.kpi-panel { grid-column: 2 / 4; }
+    .panel.log-panel { grid-column: 1 / 3; }
+    .panel.export-panel { grid-column: 3 / 4; }
+
+    .panel h2 { font-size: 0.95rem; margin-bottom: 0.15rem; }
+    .panel h3 { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.4rem; }
+    label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      margin-bottom: 0.3rem;
+    }
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      background: rgba(7, 10, 22, 0.9);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 0.45rem 0.55rem;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      outline: none;
+      transition: border 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(79, 156, 255, 0.3);
+      background: rgba(7, 10, 24, 1);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 70px;
+      max-height: 260px;
+      line-height: 1.3;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent) 0%, #38d996 60%, #ffcc4f 100%);
+      outline: none;
+      margin: 0.4rem 0;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #ffffff;
+      border: 2px solid var(--accent);
+      box-shadow: 0 0 12px rgba(79, 156, 255, 0.7);
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #ffffff;
+      border: 2px solid var(--accent);
+      box-shadow: 0 0 12px rgba(79, 156, 255, 0.7);
+      cursor: pointer;
+    }
+    .range-row { display: flex; align-items: center; gap: 0.4rem; }
+    .range-value {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      min-width: 3.2rem;
+      text-align: right;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.15rem;
+    }
+    button {
+      border-radius: var(--radius-pill);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(16, 21, 43, 0.85);
+      color: var(--text-main);
+      font-size: 0.78rem;
+      padding: 0.38rem 0.8rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
+      white-space: nowrap;
+    }
+    button.primary {
+      background: linear-gradient(135deg, #4f9cff, #38d996);
+      border-color: rgba(255, 255, 255, 0.18);
+      color: #050711;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(79, 156, 255, 0.45);
+    }
+    button.danger {
+      background: rgba(255, 84, 104, 0.06);
+      border-color: rgba(255, 84, 104, 0.7);
+      color: #ff8d9d;
+    }
+    button.small { font-size: 0.72rem; padding: 0.25rem 0.6rem; }
+    button:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+    button:not(:disabled):hover {
+      background: rgba(30, 37, 74, 0.95);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+    }
+    button.primary:not(:disabled):hover {
+      background: linear-gradient(135deg, #63aaff, #4ee1a8);
+      transform: translateY(-1px);
+      box-shadow: 0 14px 30px rgba(79, 156, 255, 0.55);
+    }
+    button.danger:not(:disabled):hover {
+      background: rgba(255, 84, 104, 0.12);
+      transform: translateY(-1px);
+    }
+    button:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+
+    .help-text { font-size: 0.72rem; color: var(--text-soft); }
+    .session-list {
+      margin-top: 0.3rem;
+      border-radius: var(--radius-md);
+      background: rgba(5, 7, 17, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      max-height: 190px;
+      overflow: hidden auto;
+      padding: 0.15rem;
+    }
+    .session-row {
+      width: 100%;
+      justify-content: space-between;
+      background: transparent;
+      border-radius: var(--radius-md);
+      padding: 0.3rem 0.4rem;
+      border: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+      font-size: 0.75rem;
+      color: var(--text-soft);
+    }
+    .session-row strong { color: var(--text-main); font-weight: 500; }
+    .session-row:last-child { border-bottom: none; }
+    .session-row.active { background: rgba(79, 156, 255, 0.12); color: var(--text-main); }
+    .session-row:hover:not(.active) { background: rgba(255, 255, 255, 0.02); }
+    .session-row-id {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.7rem;
+    }
+    .session-row-status { font-size: 0.7rem; color: var(--text-soft); margin-left: 0.3rem; }
+
+    .grid-two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.5rem;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 0.55rem;
+      margin-top: 0.35rem;
+    }
+    .kpi-card {
+      background: radial-gradient(circle at top, #1c2140 0, #101320 60%, #070816 100%);
+      border-radius: 12px;
+      padding: 0.55rem 0.65rem;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      min-height: 72px;
+    }
+    .kpi-title {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .badge {
+      padding: 0.08rem 0.4rem;
+      border-radius: 999px;
+      background: #252a3d;
+      color: var(--accent-strong);
+      font-size: 0.65rem;
+      white-space: nowrap;
+    }
+    .kpi-value { font-size: 1.1rem; font-weight: 600; margin-top: 0.1rem; }
+    .kpi-sub { font-size: 0.72rem; color: var(--text-soft); }
+    .kpi-sub.positive { color: #4ee1a8; }
+    .kpi-sub.negative { color: #ff8d9d; }
+
+    .log-output {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: rgba(5, 7, 17, 0.95);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 0.5rem 0.55rem;
+      font-size: 0.72rem;
+      color: #d0d3ea;
+      max-height: 260px;
+      overflow-y: auto;
+      margin-top: 0.25rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .inline { display: inline-flex; align-items: center; gap: 0.25rem; }
+    .inline input[type="checkbox"] { margin: 0; }
+
+    .export-output {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.72rem;
+      background: rgba(5, 7, 17, 0.95);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      margin-top: 0.35rem;
+      padding: 0.45rem 0.55rem;
+      min-height: 120px;
+      max-height: 260px;
+    }
+
+    .run-info { font-size: 0.74rem; color: var(--text-soft); margin-top: 0.2rem; }
+    .run-info code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.7rem;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.1rem 0.35rem;
+      border-radius: 999px;
+    }
+
+    @media (max-width: 1024px) {
+      main.app-grid { grid-template-columns: 1fr; }
+      .panel, .panel.kpi-panel, .panel.log-panel, .panel.export-panel { grid-column: auto; grid-row: auto; }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      header.app-header { flex-direction: column; align-items: flex-start; gap: 0.7rem; }
+      .session-info { align-items: flex-start; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      .session-list { max-height: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="logo-block">
+      <div class="logo-dot"></div>
+      <div>
+        <h1>SynQc Temporal Dynamics Series</h1>
+        <p>Drive–Probe–Drive · Control Panel</p>
+      </div>
+    </div>
+    <div class="session-info">
+      <div>Mode: <span id="sessionModeLabel">Local Simulation</span></div>
+      <div>Session: <span id="sessionId">—</span></div>
+      <div>
+        <span class="status-pill">
+          <span class="status-dot"></span>
+          <span id="sessionStatus">No session yet</span>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <div id="globalStatus" data-level="ok">Ready.</div>
+
+  <main class="app-grid">
+    <!-- Left column -->
+    <section class="panel">
+      <h2>Backend & Session</h2>
+      <label for="apiBase">
+        API base URL
+        <input id="apiBase" type="text" spellcheck="false" autocomplete="off"
+               placeholder="http://localhost:8000/api/v1/synqc" />
+      </label>
+      <label for="apiKey">
+        API key (optional)
+        <input id="apiKey" type="text" spellcheck="false" autocomplete="off"
+               placeholder="X-API-Key value" />
+      </label>
+      <p class="help-text">
+        Backend can enforce <code>X-API-Key</code> for multi-user labs.
+      </p>
+      <div class="button-row">
+        <button id="btnHealth" class="small">Ping backend</button>
+        <button id="btnRefreshSessions" class="small">Refresh sessions</button>
+      </div>
+
+      <h3>Session lifecycle</h3>
+      <div class="button-row">
+        <button id="btnNewSession" class="primary small">New session</button>
+        <button id="btnSaveSession" class="small">Save session</button>
+      </div>
+      <p class="help-text">
+        New session creates a fresh ID. Save updates the active session’s config.
+      </p>
+
+      <h3>Sessions on disk</h3>
+      <div id="sessionList" class="session-list">
+        <p class="help-text" style="padding:0.3rem 0.4rem;">
+          No sessions yet. Press “New session”.
+        </p>
+      </div>
+
+      <h2>Hardware stack</h2>
+      <label for="hardwareTarget">
+        Provider
+        <select id="hardwareTarget">
+          <option value="sim-local">Local simulator (CPU)</option>
+          <option value="ibm-qpu">IBM Quantum QPU</option>
+          <option value="aws-braket">AWS Braket</option>
+          <option value="ionq">IonQ</option>
+          <option value="classical-only">Classical lab hardware only</option>
+        </select>
+      </label>
+      <label for="hardwarePreset">
+        Hardware preset
+        <select id="hardwarePreset">
+          <option value="transmon-default">Transmon default · 5–27q</option>
+          <option value="fluxonium-pilot">Fluxonium pilot · 2–5q</option>
+          <option value="ion-chain">Trapped-ion chain · 11–32q</option>
+          <option value="neutral-atom">Neutral atom array · 100+ sites</option>
+        </select>
+      </label>
+
+      <h2>Notes</h2>
+      <label for="notes">
+        Session / run annotation
+        <textarea id="notes" placeholder="Optional annotation for this session…"></textarea>
+      </label>
+    </section>
+
+    <!-- Middle: config + run -->
+    <section class="panel">
+      <h2>Drive–Probe–Drive configuration</h2>
+      <div class="grid-two">
+        <label for="driveEnvelope">
+          Drive envelope
+          <select id="driveEnvelope">
+            <option value="gaussian">Gaussian</option>
+            <option value="square">Square</option>
+            <option value="drag">DRAG</option>
+            <option value="cosine">Cosine flat-top</option>
+          </select>
+        </label>
+        <label for="adaptiveRule">
+          Adaptive rule
+          <select id="adaptiveRule">
+            <option value="none">None (fixed)</option>
+            <option value="kalman">Kalman update</option>
+            <option value="bayes">Bayesian branching</option>
+            <option value="rl">RL controller</option>
+          </select>
+        </label>
+      </div>
+
+      <label>
+        Probe strength (ε)
+        <div class="range-row">
+          <input id="probeStrength" type="range" min="0" max="1" step="0.01" value="0.2" />
+          <div class="range-value"><span id="probeStrengthValue">0.200</span></div>
+        </div>
+      </label>
+
+      <label>
+        Probe duration (τₚ, ns)
+        <div class="range-row">
+          <input id="probeDuration" type="range" min="5" max="5000" step="5" value="120" />
+          <div class="range-value"><span id="probeDurationValue">120</span> ns</div>
+        </div>
+      </label>
+
+      <label for="objective">
+        Objective
+        <select id="objective">
+          <option value="maximize-fidelity">Maximize fidelity</option>
+          <option value="minimize-latency">Minimize latency</option>
+          <option value="info-vs-damage">Info vs back-action</option>
+          <option value="stability-window">Stability over time</option>
+        </select>
+      </label>
+
+      <h3>Run control</h3>
+      <div class="button-row">
+        <button id="btnDryRun" class="small">Dry-run (no hardware)</button>
+        <button id="btnLaunchRun" class="primary small">Launch run</button>
+        <button id="btnKillRun" class="danger small">Kill switch</button>
+      </div>
+      <p class="help-text">
+        Backend maps these to <code>/sessions/{id}/run</code> (mode=<code>run</code> or <code>dryrun</code>)
+        and <code>/sessions/{id}/kill</code>.
+      </p>
+      <div id="lastRunInfo" class="run-info">
+        No runs yet.
+      </div>
+    </section>
+
+    <!-- Right: KPIs -->
+    <section class="panel kpi-panel">
+      <h2>Live KPIs</h2>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-title">
+            <span>DPD fidelity</span>
+            <span class="badge">target ≥ 0.975</span>
+          </div>
+          <div id="kpiFidelity" class="kpi-value">—</div>
+          <div id="kpiFidelityDelta" class="kpi-sub">Awaiting run…</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">
+            <span>Latency (µs)</span>
+            <span class="badge">loop end-to-end</span>
+          </div>
+          <div id="kpiLatency" class="kpi-value">—</div>
+          <div id="kpiLatencyDelta" class="kpi-sub">Awaiting run…</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">
+            <span>Back-action</span>
+            <span class="badge">info vs damage</span>
+          </div>
+          <div id="kpiBackaction" class="kpi-value">—</div>
+          <div id="kpiBackactionHint" class="kpi-sub">Awaiting run…</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">
+            <span>Shot budget</span>
+            <span class="badge">used / limit</span>
+          </div>
+          <div id="kpiShots" class="kpi-value">—</div>
+          <div id="kpiShotsFraction" class="kpi-sub">No consumption yet.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Logs -->
+    <section class="panel log-panel">
+      <h2>Run log</h2>
+      <p class="help-text">
+        Backed by <code>/sessions/{id}/logs</code>.
+      </p>
+      <div class="button-row">
+        <button id="btnRefreshLogs" class="small">Refresh log</button>
+        <button id="btnClearLogs" class="small">Clear log</button>
+        <label class="inline">
+          <input id="autoRefreshLogs" type="checkbox" />
+          <span class="help-text">Auto-refresh (3s)</span>
+        </label>
+      </div>
+      <pre id="logsContent" class="log-output">No logs yet.</pre>
+    </section>
+
+    <!-- Export -->
+    <section class="panel export-panel">
+      <h2>Export</h2>
+      <p class="help-text">
+        Uses <code>/sessions/{id}/export?format=…</code>.
+      </p>
+      <label for="exportFormat">
+        Format
+        <select id="exportFormat">
+          <option value="json">JSON</option>
+          <option value="csv">CSV</option>
+          <option value="notebook">Notebook cell payload</option>
+        </select>
+      </label>
+      <div class="button-row">
+        <button id="btnExport" class="small">Export snapshot</button>
+      </div>
+      <textarea id="exportOutput" class="export-output" readonly spellcheck="false">
+Waiting for export…
+      </textarea>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const TARGET_FIDELITY = 0.975;
+      const state = {
+        apiBase: "",
+        apiKey: "",
+        health: null,
+        session: null,
+        lastRun: null,
+        sessionsList: [],
+        logs: [],
+        exportFormat: "json",
+        autosaveTimer: null,
+        logTimer: null,
+        statusTimer: null,
+      };
+
+      document.addEventListener("DOMContentLoaded", init);
+
+      function init() {
+        const apiBaseInput = document.getElementById("apiBase");
+        const apiKeyInput = document.getElementById("apiKey");
+
+        let defaultBase = "";
+        try {
+          const origin = window.location.origin;
+          if (origin && origin !== "null" && origin !== "file://") {
+            defaultBase = origin.replace(/\/+$/, "") + "/api/v1/synqc";
+          }
+        } catch (e) {}
+
+        if (!defaultBase) defaultBase = "http://localhost:8000/api/v1/synqc";
+        apiBaseInput.value = defaultBase;
+        state.apiBase = defaultBase;
+
+        apiBaseInput.addEventListener("change", (e) => {
+          state.apiBase = e.target.value.trim();
+          showStatus("API base set to " + state.apiBase, "ok");
+        });
+        apiKeyInput.addEventListener("change", (e) => {
+          state.apiKey = e.target.value.trim();
+          showStatus("API key updated", "ok");
+        });
+
+        wireControls();
+        updateSessionHeader();
+        updateKpis();
+        updateExportOutput("Waiting for export…");
+
+        pingHealth().catch(() => {});
+        refreshSessionList().catch(() => {});
+      }
+
+      function wireControls() {
+        document.getElementById("btnHealth").addEventListener("click", () => {
+          pingHealth().catch(() => {});
+        });
+        document
+          .getElementById("btnRefreshSessions")
+          .addEventListener("click", () => refreshSessionList().catch(() => {}));
+        document
+          .getElementById("btnNewSession")
+          .addEventListener("click", () => createNewSessionFromConfig().catch(() => {}));
+        document
+          .getElementById("btnSaveSession")
+          .addEventListener("click", () => saveSessionConfig().catch(() => {}));
+
+        ["hardwareTarget", "hardwarePreset", "driveEnvelope", "adaptiveRule", "objective"].forEach(
+          (id) => document.getElementById(id).addEventListener("change", scheduleAutosave)
+        );
+        document.getElementById("notes").addEventListener("change", scheduleAutosave);
+
+        const probeStrength = document.getElementById("probeStrength");
+        const probeDuration = document.getElementById("probeDuration");
+        probeStrength.addEventListener("input", () =>
+          updateProbeStrengthDisplay(parseFloat(probeStrength.value))
+        );
+        probeStrength.addEventListener("change", scheduleAutosave);
+        probeDuration.addEventListener("input", () =>
+          updateProbeDurationDisplay(parseInt(probeDuration.value, 10))
+        );
+        probeDuration.addEventListener("change", scheduleAutosave);
+        updateProbeStrengthDisplay(parseFloat(probeStrength.value));
+        updateProbeDurationDisplay(parseInt(probeDuration.value, 10));
+
+        document
+          .getElementById("btnDryRun")
+          .addEventListener("click", () => launchRun("dryrun").catch(() => {}));
+        document
+          .getElementById("btnLaunchRun")
+          .addEventListener("click", () => launchRun("run").catch(() => {}));
+        document
+          .getElementById("btnKillRun")
+          .addEventListener("click", () => killRun().catch(() => {}));
+
+        document
+          .getElementById("btnRefreshLogs")
+          .addEventListener("click", () => refreshLogs().catch(() => {}));
+        document
+          .getElementById("btnClearLogs")
+          .addEventListener("click", () => clearLogs().catch(() => {}));
+        document
+          .getElementById("autoRefreshLogs")
+          .addEventListener("change", (e) => setAutoRefreshLogs(e.target.checked));
+
+        const exportFormatSelect = document.getElementById("exportFormat");
+        exportFormatSelect.addEventListener("change", (e) => {
+          state.exportFormat = e.target.value;
+        });
+        document
+          .getElementById("btnExport")
+          .addEventListener("click", () => exportSnapshot().catch(() => {}));
+      }
+
+      function showStatus(message, level) {
+        const bar = document.getElementById("globalStatus");
+        bar.textContent = message;
+        bar.setAttribute("data-level", level || "ok");
+        bar.classList.add("visible");
+        if (state.statusTimer) clearTimeout(state.statusTimer);
+        state.statusTimer = setTimeout(() => bar.classList.remove("visible"), 4500);
+      }
+
+      function apiFetch(path, options) {
+        const base = (state.apiBase || "").replace(/\/+$/, "");
+        if (!base) return Promise.reject(new Error("API base URL is empty."));
+        const url = base + path;
+        const opts = options || {};
+        const headers = opts.headers || {};
+        if (opts.body && !("Content-Type" in headers)) {
+          headers["Content-Type"] = "application/json";
+        }
+        if (state.apiKey) {
+          headers["X-API-Key"] = state.apiKey;
+        }
+        opts.headers = headers;
+
+        return fetch(url, opts).then((res) => {
+          const ct = res.headers.get("content-type") || "";
+          if (!res.ok) {
+            if (ct.includes("application/json")) {
+              return res.json().then((data) => {
+                const detail = data && data.detail ? data.detail : res.statusText;
+                throw new Error("HTTP " + res.status + ": " + detail);
+              });
+            }
+            throw new Error("HTTP " + res.status + " for " + path);
+          }
+          if (ct.includes("application/json")) return res.json();
+          return res.text();
+        });
+      }
+
+      function pingHealth() {
+        return apiFetch("/health")
+          .then((data) => {
+            state.health = data;
+            showStatus(
+              "Backend healthy (v" + data.version + ") @ " + (data.api_prefix || state.apiBase),
+              "ok"
+            );
+          })
+          .catch((err) => {
+            showStatus("Health check failed: " + err.message, "error");
+            throw err;
+          });
+      }
+
+      function scheduleAutosave() {
+        if (state.autosaveTimer) clearTimeout(state.autosaveTimer);
+        state.autosaveTimer = setTimeout(() => saveSessionConfig().catch(() => {}), 600);
+      }
+
+      function buildConfigFromForm() {
+        return {
+          hardware_target: document.getElementById("hardwareTarget").value,
+          hardware_preset: document.getElementById("hardwarePreset").value,
+          drive_envelope: document.getElementById("driveEnvelope").value,
+          probe_strength: parseFloat(document.getElementById("probeStrength").value),
+          probe_duration_ns: parseInt(document.getElementById("probeDuration").value, 10),
+          adaptive_rule: document.getElementById("adaptiveRule").value,
+          objective: document.getElementById("objective").value,
+          notes: document.getElementById("notes").value || null,
+        };
+      }
+
+      function applyConfigToForm(cfg) {
+        if (!cfg) return;
+        const set = (id, val) => {
+          const el = document.getElementById(id);
+          if (val !== undefined && el) el.value = val;
+        };
+        set("hardwareTarget", cfg.hardware_target);
+        set("hardwarePreset", cfg.hardware_preset);
+        set("driveEnvelope", cfg.drive_envelope);
+        set("adaptiveRule", cfg.adaptive_rule);
+        set("objective", cfg.objective);
+
+        if (typeof cfg.probe_strength === "number") {
+          const s = document.getElementById("probeStrength");
+          s.value = cfg.probe_strength;
+          updateProbeStrengthDisplay(cfg.probe_strength);
+        }
+        if (typeof cfg.probe_duration_ns === "number") {
+          const d = document.getElementById("probeDuration");
+          d.value = cfg.probe_duration_ns;
+          updateProbeDurationDisplay(cfg.probe_duration_ns);
+        }
+        document.getElementById("notes").value = cfg.notes || "";
+      }
+
+      function updateProbeStrengthDisplay(v) {
+        if (!isFinite(v)) v = 0;
+        document.getElementById("probeStrengthValue").textContent = v.toFixed(3);
+      }
+      function updateProbeDurationDisplay(v) {
+        if (!isFinite(v)) v = 0;
+        document.getElementById("probeDurationValue").textContent = v.toFixed(0);
+      }
+
+      function createNewSessionFromConfig() {
+        const cfg = buildConfigFromForm();
+        return apiFetch("/sessions", {
+          method: "POST",
+          body: JSON.stringify({ session_id: null, config: cfg }),
+        })
+          .then((session) => {
+            state.session = session;
+            state.lastRun = null;
+            updateSessionHeader();
+            updateKpis();
+            showStatus("Created session " + session.session_id, "ok");
+            return refreshSessionList();
+          })
+          .catch((err) => {
+            showStatus("Failed to create session: " + err.message, "error");
+            throw err;
+          });
+      }
+
+      function saveSessionConfig() {
+        const cfg = buildConfigFromForm();
+        const sessionId = state.session && state.session.session_id ? state.session.session_id : null;
+        return apiFetch("/sessions", {
+          method: "POST",
+          body: JSON.stringify({ session_id: sessionId, config: cfg }),
+        })
+          .then((session) => {
+            state.session = session;
+            updateSessionHeader();
+            updateKpis();
+            showStatus("Saved configuration to " + session.session_id, "ok");
+            return refreshSessionList();
+          })
+          .catch((err) => {
+            showStatus("Failed to save config: " + err.message, "error");
+            throw err;
+          });
+      }
+
+      function refreshSessionList() {
+        return apiFetch("/sessions")
+          .then((sessions) => {
+            state.sessionsList = Array.isArray(sessions) ? sessions : [];
+            renderSessionList();
+          })
+          .catch((err) => {
+            showStatus("Failed to list sessions: " + err.message, "error");
+            throw err;
+          });
+      }
+
+      function renderSessionList() {
+        const container = document.getElementById("sessionList");
+        container.innerHTML = "";
+        if (!state.sessionsList.length) {
+          const p = document.createElement("p");
+          p.className = "help-text";
+          p.style.padding = "0.3rem 0.4rem";
+          p.textContent = "No sessions on disk yet.";
+          container.appendChild(p);
+          return;
+        }
+        state.sessionsList
+          .slice()
+          .sort(
+            (a, b) =>
+              new Date(b.last_updated_at || b.created_at || 0).getTime() -
+              new Date(a.last_updated_at || a.created_at || 0).getTime()
+          )
+          .forEach((session) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "session-row";
+
+            const idSpan = document.createElement("span");
+            idSpan.className = "session-row-id";
+            idSpan.textContent = session.session_id;
+
+            const statusSpan = document.createElement("span");
+            statusSpan.className = "session-row-status";
+            statusSpan.textContent = session.status_text || session.status || "";
+
+            btn.appendChild(idSpan);
+            btn.appendChild(statusSpan);
+
+            const active =
+              state.session && state.session.session_id === session.session_id;
+            if (active) btn.classList.add("active");
+
+            btn.addEventListener("click", () => loadSession(session.session_id).catch(() => {}));
+            container.appendChild(btn);
+          });
+      }
+
+      function loadSession(sessionId) {
+        return apiFetch("/sessions/" + encodeURIComponent(sessionId))
+          .then((session) => {
+            state.session = session;
+            state.lastRun = null;
+            applyConfigToForm(session.config);
+            updateSessionHeader();
+            updateKpis();
+            showStatus("Loaded session " + sessionId, "ok");
+            renderSessionList();
+            return refreshLogs();
+          })
+          .catch((err) => {
+            showStatus("Failed to load session: " + err.message, "error");
+            throw err;
+          });
+      }
+
+      function updateSessionHeader() {
+        const modeEl = document.getElementById("sessionModeLabel");
+        const idEl = document.getElementById("sessionId");
+        const statusEl = document.getElementById("sessionStatus");
+        if (!state.session) {
+          modeEl.textContent = "Local Simulation";
+          idEl.textContent = "—";
+          statusEl.textContent = "No session yet";
+          return;
+        }
+        modeEl.textContent = state.session.mode_label || "Session";
+        idEl.textContent = state.session.session_id;
+        statusEl.textContent = state.session.status_text || state.session.status || "";
+      }
+
+      function updateKpis() {
+        const k = state.session ? state.session.last_kpis : null;
+        const fidelityEl = document.getElementById("kpiFidelity");
+        const fidelityDeltaEl = document.getElementById("kpiFidelityDelta");
+        const latencyEl = document.getElementById("kpiLatency");
+        const latencyDeltaEl = document.getElementById("kpiLatencyDelta");
+        const backEl = document.getElementById("kpiBackaction");
+        const backHintEl = document.getElementById("kpiBackactionHint");
+        const shotsEl = document.getElementById("kpiShots");
+        const shotsFracEl = document.getElementById("kpiShotsFraction");
+
+        fidelityDeltaEl.classList.remove("positive", "negative");
+        latencyDeltaEl.classList.remove("positive", "negative");
+
+        if (!k) {
+          fidelityEl.textContent = "—";
+          fidelityDeltaEl.textContent = "Awaiting run…";
+          latencyEl.textContent = "—";
+          latencyDeltaEl.textContent = "Awaiting run…";
+          backEl.textContent = "—";
+          backHintEl.textContent = "Awaiting run…";
+          shotsEl.textContent = "—";
+          shotsFracEl.textContent = "No consumption yet.";
+          return;
+        }
+
+        const fid = Number(k.fidelity);
+        const lat = Number(k.latency_us);
+        const back = Number(k.backaction);
+        const shotsUsed = Number(k.shots_used);
+        const shotLimit = Number(k.shot_limit);
+        const frac =
+          typeof k.shots_used_fraction === "number"
+            ? k.shots_used_fraction
+            : shotLimit > 0
+            ? Math.min(1, Math.max(0, shotsUsed / shotLimit))
+            : 0;
+
+        fidelityEl.textContent = fid.toFixed(3);
+        const delta = fid - TARGET_FIDELITY;
+        if (Math.abs(delta) < 1e-4) {
+          fidelityDeltaEl.textContent = "At target";
+        } else if (delta > 0) {
+          fidelityDeltaEl.textContent = "+" + delta.toFixed(3) + " vs target";
+          fidelityDeltaEl.classList.add("positive");
+        } else {
+          fidelityDeltaEl.textContent = delta.toFixed(3) + " vs target";
+          fidelityDeltaEl.classList.add("negative");
+        }
+
+        latencyEl.textContent = lat.toFixed(1);
+        if (lat < 20) {
+          latencyDeltaEl.textContent = "Fast loop";
+          latencyDeltaEl.classList.add("positive");
+        } else if (lat > 80) {
+          latencyDeltaEl.textContent = "High latency";
+          latencyDeltaEl.classList.add("negative");
+        } else {
+          latencyDeltaEl.textContent = "Moderate latency";
+        }
+
+        backEl.textContent = back.toFixed(3);
+        if (back < 0.25) {
+          backHintEl.textContent = "Back-action acceptable";
+          backHintEl.classList.add("positive");
+        } else if (back > 0.6) {
+          backHintEl.textContent = "Back-action heavy – ease ε";
+          backHintEl.classList.add("negative");
+        } else {
+          backHintEl.textContent = "Balanced regime";
+        }
+
+        shotsEl.textContent = formatShots(shotsUsed) + " / " + formatShots(shotLimit);
+        shotsFracEl.textContent = (frac * 100).toFixed(1) + "% consumed";
+      }
+
+      function formatShots(n) {
+        if (!isFinite(n) || n < 0) return "0";
+        if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+        if (n >= 1_000) return (n / 1_000).toFixed(1) + "k";
+        return String(Math.round(n));
+      }
+
+      function launchRun(mode) {
+        if (!state.session || !state.session.session_id) {
+          showStatus("Create or load a session first.", "warn");
+          return Promise.resolve();
+        }
+        const sessionId = state.session.session_id;
+        const payload = { mode: mode === "dryrun" ? "dryrun" : "run" };
+
+        const runBtn = document.getElementById("btnLaunchRun");
+        const dryBtn = document.getElementById("btnDryRun");
+        runBtn.disabled = true;
+        dryBtn.disabled = true;
+
+        return apiFetch("/sessions/" + encodeURIComponent(sessionId) + "/run", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        })
+          .then((resp) => {
+            state.session = resp.session;
+            state.lastRun = resp.run;
+            updateSessionHeader();
+            updateKpis();
+            renderSessionList();
+            updateLastRunInfo();
+            showStatus(
+              "Run " + resp.run.run_id + " completed (" + resp.run.mode + ")",
+              "ok"
+            );
+            return refreshLogs();
+          })
+          .catch((err) => {
+            showStatus("Run failed: " + err.message, "error");
+            throw err;
+          })
+          .finally(() => {
+            runBtn.disabled = false;
+            dryBtn.disabled = false;
+          });
+      }
+
+      function updateLastRunInfo() {
+        const el = document.getElementById("lastRunInfo");
+        const run = state.lastRun;
+        if (!run) {
+          el.textContent = "No runs yet.";
+          return;
+        }
+        const ts = run.created_at || "";
+        const modeLabel = run.mode === "dryrun" ? "dry-run" : "run";
+        const k = run.kpis;
+        let summary = "";
+        if (k) {
+          summary =
+            " · fidelity=" +
+            k.fidelity.toFixed(3) +
+            ", latency=" +
+            k.latency_us.toFixed(1) +
+            "µs, back-action=" +
+            k.backaction.toFixed(3) +
+            ", shots=" +
+            formatShots(k.shots_used) +
+            "/" +
+            formatShots(k.shot_limit);
+        }
+        el.innerHTML =
+          "Last " +
+          modeLabel +
+          ' <code>' +
+          run.run_id +
+          "</code> @ " +
+          ts +
+          summary;
+      }
+
+      function killRun() {
+        if (!state.session || !state.session.session_id) {
+          showStatus("No active session to kill.", "warn");
+          return Promise.resolve();
+        }
+        const sessionId = state.session.session_id;
+        return apiFetch("/sessions/" + encodeURIComponent(sessionId) + "/kill", {
+          method: "POST",
+        })
+          .then(() =>
+            apiFetch("/sessions/" + encodeURIComponent(sessionId)).then((session) => {
+              state.session = session;
+              updateSessionHeader();
+              showStatus("Kill switch pressed for " + sessionId, "ok");
+              return refreshLogs();
+            })
+          )
+          .catch((err) => {
+            showStatus("Kill switch failed: " + err.message, "error");
+            throw err;
+          });
+      }
+
+      function refreshLogs() {
+        if (!state.session || !state.session.session_id) {
+          document.getElementById("logsContent").textContent = "No session loaded.";
+          return Promise.resolve();
+        }
+        const sessionId = state.session.session_id;
+        return apiFetch("/sessions/" + encodeURIComponent(sessionId) + "/logs?limit=200")
+          .then((resp) => {
+            const lines = resp && resp.lines ? resp.lines : [];
+            state.logs = lines;
+            renderLogs();
+          })
+          .catch((err) => {
+            showStatus("Failed to fetch logs: " + err.message, "error");
+            throw err;
+          });
+      }
+
+      function renderLogs() {
+        const pre = document.getElementById("logsContent");
+        if (!state.logs.length) {
+          pre.textContent = "No logs yet.";
+          return;
+        }
+        pre.textContent = state.logs.join("\n");
+      }
+
+      function clearLogs() {
+        if (!state.session || !state.session.session_id) {
+          showStatus("No session loaded to clear logs.", "warn");
+          return Promise.resolve();
+        }
+        const sessionId = state.session.session_id;
+        return apiFetch("/sessions/" + encodeURIComponent(sessionId) + "/logs", {
+          method: "DELETE",
+        })
+          .then(() => {
+            showStatus("Logs cleared for " + sessionId, "ok");
+            return refreshLogs();
+          })
+          .catch((err) => {
+            showStatus("Failed to clear logs: " + err.message, "error");
+            throw err;
+          });
+      }
+
+      function setAutoRefreshLogs(enabled) {
+        if (state.logTimer) {
+          clearInterval(state.logTimer);
+          state.logTimer = null;
+        }
+        if (!enabled) return;
+        state.logTimer = setInterval(() => {
+          if (!state.session || !state.session.session_id) return;
+          refreshLogs().catch(() => {});
+        }, 3000);
+      }
+
+      function exportSnapshot() {
+        if (!state.session || !state.session.session_id) {
+          showStatus("No session loaded for export.", "warn");
+          return Promise.resolve();
+        }
+        const sessionId = state.session.session_id;
+        const format = state.exportFormat || "json";
+        const path =
+          "/sessions/" +
+          encodeURIComponent(sessionId) +
+          "/export?format=" +
+          encodeURIComponent(format);
+
+        return apiFetch(path)
+          .then((resp) => {
+            if (!resp || typeof resp !== "object") {
+              updateExportOutput(String(resp));
+              showStatus("Export completed.", "ok");
+              return;
+            }
+            if (resp.format === "json") {
+              updateExportOutput(JSON.stringify(resp.payload, null, 2) + "\n");
+            } else {
+              updateExportOutput(String(resp.payload || ""));
+            }
+            showStatus("Exported snapshot as " + resp.format, "ok");
+          })
+          .catch((err) => {
+            showStatus("Export failed: " + err.message, "error");
+            throw err;
+          });
+      }
+
+      function updateExportOutput(text) {
+        const el = document.getElementById("exportOutput");
+        el.value = text || "";
+      }
+    })();
+  </script>
+</body>
+</html>
