@@ -1,3 +1,350 @@
+"""
+hardware_backends.py
+
+Hardware abstraction layer for SynQc TDS.
+
+This isolates:
+- Local simulation (for the UI and development)
+- Real quantum providers (IBM, AWS Braket, IonQ)
+- Classical-only lab hardware (FPGA/DAQ)
+from the FastAPI app and session engine.
+
+You plug it into your existing SynQcEngine so that
+SynQcEngine only knows "call backend.run_experiment(config, session)".
+"""
+
+from __future__ import annotations
+
+import math
+import os
+import time
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any, Dict, Mapping, Optional
+
+import numpy as np
+
+# ---------------------------------------------------------------------------
+# Shared limits (safety guards)
+# ---------------------------------------------------------------------------
+
+MAX_PROBE_STRENGTH: float = float(os.getenv("SYNQC_MAX_PROBE_STRENGTH", "0.5"))
+MAX_PROBE_DURATION_NS: int = int(os.getenv("SYNQC_MAX_PROBE_DURATION_NS", "5000"))
+MAX_SHOTS_PER_RUN: int = int(os.getenv("SYNQC_MAX_SHOTS_PER_RUN", "200_000"))
+
+
+@dataclass
+class SimKpis:
+  """Simple dataclass so we don't tie to a particular Pydantic model here."""
+
+  fidelity: float
+  latency_us: float
+  backaction: float
+  shots_used: int
+  shot_limit: int
+
+  @property
+  def shots_used_fraction(self) -> float:
+    return min(1.0, self.shots_used / self.shot_limit) if self.shot_limit > 0 else 0.0
+
+
+class HardwareBackend(ABC):
+  """
+  Contract for all hardware backends.
+
+  cfg:  your existing RunConfiguration (Pydantic model on the backend).
+  session: your existing SessionState instance.
+  Returns: something that can be converted into your KpiBundle.
+  """
+
+  target_id: str  # e.g. "sim-local", "ibm-qpu", ...
+
+  def __init__(self, target_id: str, name: str):
+    self.target_id = target_id
+    self.name = name
+
+  @abstractmethod
+  def run_experiment(self, cfg: Any, session: Any, *, dry_run: bool = False) -> SimKpis:
+    """
+    Execute (or simulate) a DPD experiment for the given configuration.
+
+    This is where:
+      - you call Qiskit / Braket / IonQ / DAQ drivers
+      - OR you call a local simulator
+      - you enforce hardware safety limits
+    """
+    raise NotImplementedError
+
+
+# ---------------------------------------------------------------------------
+# Local simulation backend
+# ---------------------------------------------------------------------------
+
+
+class LocalSimBackend(HardwareBackend):
+  """
+  High-level "sane" simulator that mimics tradeoffs:
+
+  - Higher probe_strength -> more information but more back-action.
+  - Longer probe_duration_ns -> higher latency and back-action, some fidelity changes.
+  - Different objectives tweak effective scaling.
+
+  This is where the previous SynQcEngine._simulate_kpis logic lives.
+  """
+
+  def __init__(self) -> None:
+    super().__init__(target_id="sim-local", name="Local simulator")
+    self._rng = np.random.default_rng()
+
+  def run_experiment(self, cfg: Any, session: Any, *, dry_run: bool = False) -> SimKpis:
+    # Safety clamps
+    eps = float(cfg.probe_strength)
+    tau_ns = int(cfg.probe_duration_ns)
+
+    if eps < 0:
+      eps = 0.0
+    if eps > MAX_PROBE_STRENGTH:
+      # Hard fail instead of silently clamping, safer for real hardware.
+      raise ValueError(
+        f"probe_strength={cfg.probe_strength} exceeds limit "
+        f"{MAX_PROBE_STRENGTH}. Refusing to run."
+      )
+    if tau_ns < 1:
+      tau_ns = 1
+    if tau_ns > MAX_PROBE_DURATION_NS:
+      raise ValueError(
+        f"probe_duration_ns={cfg.probe_duration_ns} exceeds limit "
+        f"{MAX_PROBE_DURATION_NS}. Refusing to run."
+      )
+
+    # Basic "difficulty" factor by objective
+    objective = getattr(cfg, "objective", "maximize-fidelity")
+    obj_weight = {
+      "maximize-fidelity": 1.0,
+      "minimize-latency": 0.9,
+      "info-vs-damage": 0.95,
+      "stability-window": 0.97,
+    }.get(objective, 1.0)
+
+    # "Hardware" scaling: transmon vs trapped-ion vs neutral atoms etc.
+    preset = getattr(cfg, "hardware_preset", "transmon-default")
+    hw_factor = {
+      "transmon-default": 1.0,
+      "fluxonium-pilot": 0.96,
+      "ion-chain": 0.93,
+      "neutral-atom": 0.9,
+    }.get(preset, 1.0)
+
+    # Latency in microseconds (toy model)
+    base_latency_us = 15.0
+    latency_us = base_latency_us + (tau_ns / 500.0) + 20.0 * eps
+    latency_us *= hw_factor
+
+    # Back-action grows with eps and tau (but saturates)
+    backaction = 1.0 - math.exp(-eps * tau_ns / 1000.0)
+    backaction = min(backaction, 1.0)
+
+    # Fidelity: high at small eps and moderate tau; falls if too aggressive
+    sweet_eps = 0.18
+    sweet_tau = 300.0
+    eps_term = math.exp(-((eps - sweet_eps) ** 2) / (2 * 0.06**2))
+    tau_term = math.exp(-((tau_ns - sweet_tau) ** 2) / (2 * 280.0**2))
+    fidelity_mean = 0.80 + 0.15 * eps_term * tau_term
+    fidelity_mean *= obj_weight
+    fidelity_mean *= hw_factor
+
+    # Some stochasticity
+    jitter = float(self._rng.normal(0.0, 0.004))
+    fidelity = max(0.0, min(0.9999, fidelity_mean + jitter))
+
+    # Shot accounting
+    default_shots = 20_000
+    shot_limit = min(MAX_SHOTS_PER_RUN, int(getattr(session, "shot_limit", default_shots)))
+    shots_used = min(shot_limit, int(default_shots * (0.6 + 0.8 * eps)))
+
+    # Optionally be nicer for dry-run (short latency, no consumption)
+    if dry_run:
+      latency_us *= 0.3
+      shots_used = 0
+
+    return SimKpis(
+      fidelity=fidelity,
+      latency_us=latency_us,
+      backaction=backaction,
+      shots_used=shots_used,
+      shot_limit=shot_limit,
+    )
+
+
+# ---------------------------------------------------------------------------
+# IBM Quantum QPU backend (skeleton)
+# ---------------------------------------------------------------------------
+
+
+class IbmQpuBackend(HardwareBackend):
+  """
+  Skeleton integration for IBM QPU.
+
+  You configure:
+    - IBM_QUANTUM_CHANNEL (optional)
+    - IBM_QUANTUM_BACKEND_NAME
+    - IBM_QUANTUM_TOKEN (or use qiskit-ibm-runtime's default account config)
+
+  This class intentionally imports qiskit lazily so the file can be imported
+  even if qiskit is not installed (e.g. purely-sim local dev).
+  """
+
+  def __init__(self) -> None:
+    super().__init__(target_id="ibm-qpu", name="IBM Quantum")
+
+  def run_experiment(self, cfg: Any, session: Any, *, dry_run: bool = False) -> SimKpis:
+    if dry_run:
+      # Delegate to local sim for UI-only dry-runs.
+      return LocalSimBackend().run_experiment(cfg, session, dry_run=True)
+
+    try:
+      from qiskit_ibm_runtime import QiskitRuntimeService
+    except ImportError as exc:
+      raise RuntimeError(
+        "qiskit-ibm-runtime is not installed. "
+        "Install with `pip install qiskit-ibm-runtime`."
+      ) from exc
+
+    backend_name = os.getenv("IBM_QUANTUM_BACKEND_NAME", "").strip()
+    if not backend_name:
+      raise RuntimeError("IBM_QUANTUM_BACKEND_NAME not set")
+
+    service = QiskitRuntimeService()
+    backend = service.backend(backend_name)
+
+    # TODO: translate cfg into a circuit and a schedule.
+    # This is where you call assemble/run/etc. For now we refuse to run
+    # to avoid giving you fake QPU results.
+    raise NotImplementedError(
+      "IbmQpuBackend.run_experiment: implement circuit compilation + execution "
+      "for your specific DPD experiment."
+    )
+
+
+# ---------------------------------------------------------------------------
+# AWS Braket backend (skeleton)
+# ---------------------------------------------------------------------------
+
+
+class AwsBraketBackend(HardwareBackend):
+  """
+  Skeleton integration for AWS Braket.
+
+  Configure AWS creds and set:
+    - BRAKET_DEVICE_ARN
+  """
+
+  def __init__(self) -> None:
+    super().__init__(target_id="aws-braket", name="AWS Braket")
+
+  def run_experiment(self, cfg: Any, session: Any, *, dry_run: bool = False) -> SimKpis:
+    if dry_run:
+      return LocalSimBackend().run_experiment(cfg, session, dry_run=True)
+
+    try:
+      from braket.aws import AwsDevice
+    except ImportError as exc:
+      raise RuntimeError(
+        "amazon-braket-sdk is not installed. "
+        "Install with `pip install amazon-braket-sdk`."
+      ) from exc
+
+    device_arn = os.getenv("BRAKET_DEVICE_ARN", "").strip()
+    if not device_arn:
+      raise RuntimeError("BRAKET_DEVICE_ARN not set")
+
+    device = AwsDevice(device_arn)
+
+    # TODO: translate cfg into a Braket circuit/task.
+    raise NotImplementedError(
+      "AwsBraketBackend.run_experiment: implement task creation + result handling."
+    )
+
+
+# ---------------------------------------------------------------------------
+# IonQ backend (skeleton)
+# ---------------------------------------------------------------------------
+
+
+class IonqBackend(HardwareBackend):
+  """
+  Skeleton integration for IonQ.
+
+  Depending on whether you use IonQ directly or via a provider,
+  you might use:
+    - ionq python SDK
+    - qiskit-ionq
+  """
+
+  def __init__(self) -> None:
+    super().__init__(target_id="ionq", name="IonQ")
+
+  def run_experiment(self, cfg: Any, session: Any, *, dry_run: bool = False) -> SimKpis:
+    if dry_run:
+      return LocalSimBackend().run_experiment(cfg, session, dry_run=True)
+
+    # Don’t pretend to know your IonQ integration – keep this as an explicit TODO.
+    raise NotImplementedError(
+      "IonqBackend.run_experiment: wire this up to your IonQ integration "
+      "(native SDK or qiskit-ionq)."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Classical-only backend (FPGA / DAQ)
+# ---------------------------------------------------------------------------
+
+
+class ClassicalFpgaBackend(HardwareBackend):
+  """
+  Skeleton integration for classical-only lab hardware
+  (FPGA controllers, AWGs, digitizers, DAQs).
+
+  Expected pattern:
+    - you have a local driver library (pyvisa / custom TCP / vendor API)
+    - you translate cfg into pulse programs
+    - you stream those to hardware, read back metrics, produce KPIs
+  """
+
+  def __init__(self) -> None:
+    super().__init__(target_id="classical-only", name="Classical FPGA/DAQ")
+
+  def run_experiment(self, cfg: Any, session: Any, *, dry_run: bool = False) -> SimKpis:
+    if dry_run:
+      # For purely classical rigs, dry-run usually means "compile only".
+      return LocalSimBackend().run_experiment(cfg, session, dry_run=True)
+
+    # This is intentionally left as an explicit integration point.
+    raise NotImplementedError(
+      "ClassicalFpgaBackend.run_experiment: integrate with your FPGA/DAQ driver."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Registry
+# ---------------------------------------------------------------------------
+
+_BACKENDS: Dict[str, HardwareBackend] = {
+  "sim-local": LocalSimBackend(),
+  "ibm-qpu": IbmQpuBackend(),
+  "aws-braket": AwsBraketBackend(),
+  "ionq": IonqBackend(),
+  "classical-only": ClassicalFpgaBackend(),
+}
+
+
+def get_backend(target_id: str) -> HardwareBackend:
+  """
+  Resolve hardware_target from RunConfiguration -> backend instance.
+  """
+  if target_id not in _BACKENDS:
+    raise KeyError(f"Unknown hardware_target={target_id!r}")
+  return _BACKENDS[target_id]
 
 """
 SynQc Temporal Dynamics Series — Super Backend
