@@ -683,6 +683,43 @@
       padding: 0.5rem 0;
     }
 
+    #clampWarningBanner {
+      display: none;
+      position: fixed;
+      top: 4.5rem;
+      left: 0;
+      right: 0;
+      background: linear-gradient(90deg, rgba(255, 221, 110, 0.15), rgba(255, 176, 117, 0.12));
+      border-bottom: 1px solid rgba(255, 221, 110, 0.6);
+      padding: 0.6rem 1.5rem;
+      font-size: 0.8rem;
+      color: #fff1c5;
+      z-index: 35;
+      box-shadow: 0 4px 12px rgba(255, 221, 110, 0.2);
+    }
+
+    #clampWarningBanner.visible {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    #clampWarningBanner .clamp-message {
+      flex: 1;
+    }
+
+    #clampWarningBanner .clamp-close {
+      cursor: pointer;
+      font-size: 1.2rem;
+      opacity: 0.7;
+      transition: opacity 0.2s ease;
+    }
+
+    #clampWarningBanner .clamp-close:hover {
+      opacity: 1;
+    }
+
     @media (max-width: 1024px) {
       main.app-grid {
         grid-template-columns: 1fr;
@@ -744,6 +781,11 @@
 
   <div id="globalStatus" data-level="ok">Ready.</div>
 
+  <div id="clampWarningBanner">
+    <div class="clamp-message" id="clampMessage">Server applied parameter clamps to ensure safety.</div>
+    <span class="clamp-close" id="clampClose">✕</span>
+  </div>
+
   <main class="app-grid">
     <!-- Backend & Session -->
     <section class="panel panel--backend">
@@ -798,7 +840,7 @@
         <select id="hardwareTarget">
           <option value="sim-local">Local simulator (CPU)</option>
           <option value="ibm-qpu">IBM Quantum QPU</option>
-          <option value="aws-braket">AWS Braket</option>
+          <option value="aws-bracket">AWS Bracket</option>
           <option value="ionq">IonQ</option>
           <option value="classical-only">Classical lab hardware only</option>
         </select>
@@ -874,7 +916,7 @@
             id="numIterations"
             type="number"
             min="1"
-            max="10_000"
+            max="10000"
             step="1"
             value="5"
           />
@@ -885,7 +927,7 @@
             id="shotLimit"
             type="number"
             min="128"
-            max="1_000_000"
+            max="1000000"
             step="128"
             value="4096"
           />
@@ -1078,8 +1120,6 @@
         totalShotsInitialized: false,
       };
 
-      document.addEventListener("DOMContentLoaded", init);
-
       function init() {
         const apiBaseInput = document.getElementById("apiBase");
         const apiKeyInput = document.getElementById("apiKey");
@@ -1117,6 +1157,8 @@
         pingHealth().catch(() => {});
         refreshSessionList().catch(() => {});
       }
+
+      document.addEventListener("DOMContentLoaded", init);
 
       function wireControls() {
         document.getElementById("btnHealth").addEventListener("click", () => {
@@ -1291,9 +1333,10 @@
 
       function scheduleAutosave() {
         if (state.autosaveTimer) clearTimeout(state.autosaveTimer);
+        // Increased debounce to reduce rapid save requests under heavy UI activity
         state.autosaveTimer = setTimeout(() => {
           saveSessionConfig().catch(() => {});
-        }, 600);
+        }, 1000);
       }
 
       function buildConfigFromForm() {

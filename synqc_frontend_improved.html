@@ -1,0 +1,1484 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SynQc Temporal Dynamics Series – Control Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      color-scheme: dark;
+      
+      /* Enhanced color palette */
+      --bg-primary: #0a0e27;
+      --bg-secondary: #131629;
+      --bg-tertiary: #1a1f3a;
+      --bg-surface: #242d4f;
+      
+      --border-soft: #2a3454;
+      --border-mid: #3a4570;
+      --border-bright: #4a5580;
+      
+      --accent-cyan: #00d9ff;
+      --accent-cyan-soft: rgba(0, 217, 255, 0.08);
+      --accent-cyan-glow: rgba(0, 217, 255, 0.2);
+      
+      --accent-purple: #b366ff;
+      --accent-purple-soft: rgba(179, 102, 255, 0.08);
+      
+      --accent-emerald: #00ffaa;
+      --accent-emerald-soft: rgba(0, 255, 170, 0.08);
+      
+      --text-primary: #f0f4ff;
+      --text-secondary: #b0b8d4;
+      --text-tertiary: #7a8ab0;
+      
+      --success: #00ffaa;
+      --warning: #ffa500;
+      --danger: #ff6b6b;
+      
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, var(--bg-primary) 0%, #0f1535 50%, var(--bg-primary) 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* --- HEADER --- */
+    header {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border-soft);
+      background: linear-gradient(90deg, 
+        rgba(10, 14, 39, 0.96) 0%,
+        rgba(15, 24, 60, 0.94) 50%,
+        rgba(10, 14, 39, 0.96) 100%);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      box-shadow: 0 8px 32px rgba(0, 217, 255, 0.08);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex: 1;
+    }
+
+    .header-branding h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-branding .tagline {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+      letter-spacing: 0.05em;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding-left: 20px;
+      border-left: 1px solid var(--border-soft);
+    }
+
+    .api-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .api-controls label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .api-controls input {
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-soft);
+      padding: 8px 12px;
+      color: var(--text-primary);
+      font-size: 12px;
+      width: 220px;
+    }
+
+    .api-controls input:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 12px var(--accent-cyan-glow);
+    }
+
+    .health-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border-soft);
+      background: var(--accent-cyan-soft);
+      font-size: 11px;
+    }
+
+    .health-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-tertiary);
+      animation: pulse-soft 2s ease-in-out infinite;
+    }
+
+    .health-dot.ok {
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .health-dot.bad {
+      background: var(--danger);
+      box-shadow: 0 0 8px var(--danger);
+    }
+
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* --- MAIN GRID --- */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 320px 1fr 320px;
+      gap: 20px;
+      padding: 20px 32px;
+      max-width: 2400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (max-width: 1400px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* --- SECTIONS --- */
+    section {
+      background: linear-gradient(135deg, 
+        rgba(18, 25, 50, 0.98) 0%,
+        rgba(20, 28, 55, 0.96) 100%);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-soft);
+      padding: 24px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+    }
+
+    section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, 
+        transparent, 
+        rgba(0, 217, 255, 0.3), 
+        transparent);
+      pointer-events: none;
+    }
+
+    section h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    section h3 {
+      margin: 16px 0 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+    }
+
+    section h3:first-of-type {
+      margin-top: 0;
+    }
+
+    /* --- FORM ELEMENTS --- */
+    .field-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      min-width: 140px;
+      font-weight: 500;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-soft);
+      padding: 8px 12px;
+      color: var(--text-primary);
+      font-size: 12px;
+      flex: 1;
+      transition: all 0.2s ease;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      background: var(--bg-surface);
+      box-shadow: 0 0 16px var(--accent-cyan-glow);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 70px;
+      max-height: 160px;
+      font-family: inherit;
+    }
+
+    /* --- BUTTONS --- */
+    button {
+      border-radius: 20px;
+      border: 1px solid var(--border-mid);
+      background: linear-gradient(135deg, 
+        rgba(0, 217, 255, 0.08) 0%,
+        rgba(179, 102, 255, 0.04) 100%);
+      color: var(--accent-cyan);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 16px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    button:hover:not(:disabled) {
+      border-color: var(--accent-cyan);
+      background: linear-gradient(135deg, 
+        rgba(0, 217, 255, 0.15) 0%,
+        rgba(179, 102, 255, 0.08) 100%);
+      box-shadow: 0 0 20px var(--accent-cyan-glow);
+      transform: translateY(-1px);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 100%);
+      color: var(--bg-primary);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 8px 20px rgba(0, 217, 255, 0.25);
+    }
+
+    button.primary:hover:not(:disabled) {
+      box-shadow: 0 12px 28px rgba(0, 217, 255, 0.35);
+    }
+
+    button.danger {
+      color: var(--danger);
+      background: linear-gradient(135deg, 
+        rgba(255, 107, 107, 0.08) 0%,
+        rgba(255, 107, 107, 0.02) 100%);
+      border-color: rgba(255, 107, 107, 0.4);
+    }
+
+    button.danger:hover:not(:disabled) {
+      border-color: var(--danger);
+      box-shadow: 0 0 20px rgba(255, 107, 107, 0.25);
+    }
+
+    button.secondary {
+      background: rgba(26, 31, 58, 0.6);
+      color: var(--text-secondary);
+      border-color: var(--border-mid);
+    }
+
+    button.secondary:hover:not(:disabled) {
+      background: rgba(26, 31, 58, 0.9);
+      border-color: var(--border-bright);
+    }
+
+    button.small {
+      padding: 5px 12px;
+      font-size: 11px;
+    }
+
+    /* --- LAYOUT HELPERS --- */
+    .flex-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .flex-col {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* --- STATUS LINE --- */
+    .status-line {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border-radius: var(--radius-md);
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-soft);
+      margin-bottom: 12px;
+    }
+
+    .status-line .session-id {
+      font-family: 'Monaco', 'Courier New', monospace;
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    /* --- KPI GRID --- */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 12px 0;
+    }
+
+    .kpi-card {
+      background: linear-gradient(135deg,
+        rgba(0, 217, 255, 0.04) 0%,
+        rgba(179, 102, 255, 0.02) 100%);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      border: 1px solid var(--border-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+      opacity: 0.5;
+    }
+
+    .kpi-label {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 10px;
+      color: var(--text-tertiary);
+      font-weight: 600;
+    }
+
+    .kpi-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      margin: 2px 0;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+
+    /* --- SESSION LIST --- */
+    .session-list {
+      font-size: 11px;
+      max-height: 180px;
+      overflow-y: auto;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-soft);
+      background: var(--bg-tertiary);
+      padding: 0;
+      margin: 8px 0;
+    }
+
+    .session-list div {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(58, 69, 112, 0.4);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .session-list div:last-child {
+      border-bottom: none;
+    }
+
+    .session-list div:hover {
+      background: rgba(0, 217, 255, 0.05);
+    }
+
+    .session-list div.active {
+      background: linear-gradient(90deg, 
+        rgba(0, 217, 255, 0.12) 0%,
+        rgba(0, 217, 255, 0.04) 100%);
+      border-left: 2px solid var(--accent-cyan);
+      padding-left: 10px;
+    }
+
+    .session-list .sid {
+      font-family: 'Monaco', 'Courier New', monospace;
+      color: var(--accent-cyan);
+      font-weight: 600;
+      flex: 1;
+    }
+
+    .session-list .info {
+      color: var(--text-tertiary);
+      font-size: 10px;
+    }
+
+    /* --- CODE & PRE --- */
+    code {
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 11px;
+      background: rgba(0, 217, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent-cyan);
+    }
+
+    pre {
+      background: var(--bg-tertiary);
+      padding: 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-soft);
+      max-height: 240px;
+      overflow-y: auto;
+      margin: 8px 0;
+      font-size: 11px;
+      line-height: 1.4;
+      color: var(--text-secondary);
+    }
+
+    pre::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    pre::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    pre::-webkit-scrollbar-thumb {
+      background: rgba(0, 217, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    pre::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 217, 255, 0.4);
+    }
+
+    /* --- TABLE --- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-soft);
+      text-align: left;
+    }
+
+    th {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 10px;
+      color: var(--text-tertiary);
+      font-weight: 600;
+      background: rgba(0, 217, 255, 0.02);
+    }
+
+    tbody tr:hover {
+      background: rgba(0, 217, 255, 0.04);
+    }
+
+    /* --- TELEMETRY & EXPORT --- */
+    .telemetry-wrapper,
+    .export-wrapper {
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-soft);
+      overflow: hidden;
+      background: var(--bg-tertiary);
+      max-height: 200px;
+      margin: 8px 0;
+    }
+
+    .telemetry-wrapper table {
+      margin: 0;
+    }
+
+    .export-textarea {
+      width: 100%;
+      min-height: 100px;
+      max-height: 240px;
+      font-size: 11px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      color: var(--text-secondary);
+      margin: 8px 0;
+      resize: vertical;
+    }
+
+    /* --- CONTROLS --- */
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 8px 0;
+      align-items: center;
+    }
+
+    .muted {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    /* --- AGENT SECTION --- */
+    .agent-suggestion-box {
+      background: linear-gradient(135deg,
+        rgba(179, 102, 255, 0.04) 0%,
+        rgba(0, 217, 255, 0.02) 100%);
+      border: 1px solid rgba(179, 102, 255, 0.3);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      margin: 12px 0;
+    }
+
+    .agent-status {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      background: rgba(0, 255, 170, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(0, 255, 170, 0.3);
+    }
+
+    /* --- RESPONSIVE --- */
+    @media (max-width: 1024px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+      
+      .kpi-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .header-right {
+        border-left: none;
+        border-top: 1px solid var(--border-soft);
+        padding-left: 0;
+        padding-top: 12px;
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
+      .api-controls {
+        flex-wrap: wrap;
+        width: 100%;
+      }
+
+      .api-controls input {
+        width: 100%;
+      }
+
+      main {
+        padding: 12px 16px;
+        gap: 12px;
+      }
+
+      section {
+        padding: 16px;
+      }
+
+      .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* --- SCROLLBAR --- */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 217, 255, 0.2);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 217, 255, 0.4);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-branding">
+      <h1>SynQc TDS</h1>
+      <div class="tagline">Interstellar Control Console</div>
+    </div>
+  </div>
+  
+  <div class="header-right">
+    <div class="api-controls">
+      <label for="api-base-url">API Base</label>
+      <input id="api-base-url"
+             type="text"
+             value="http://127.0.0.1:8000/api/v1/synqc"
+             placeholder="Backend URL">
+      <label for="api-key">Key</label>
+      <input id="api-key" 
+             type="text" 
+             placeholder="X-API-Key (optional)">
+    </div>
+    <button id="btn-ping" class="small primary">Ping</button>
+    <div class="health-indicator">
+      <span class="health-dot" id="health-dot"></span>
+      <span id="health-label">Unknown</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT COLUMN: Configuration -->
+  <section id="backend-session">
+    <h2>Configuration</h2>
+
+    <div class="status-line">
+      <span id="status-text">No session</span>
+      <span class="session-id" id="current-session-id">—</span>
+    </div>
+
+    <h3>Session Lifecycle</h3>
+    <div class="controls-row">
+      <button id="btn-new-session" class="primary small">New Session</button>
+      <button id="btn-save-session" class="secondary small">Save</button>
+      <button id="btn-refresh-sessions" class="secondary small">Refresh</button>
+    </div>
+
+    <h3>Active Sessions</h3>
+    <div class="session-list" id="session-list">
+      <div class="muted" style="padding: 8px 12px;">No sessions yet</div>
+    </div>
+
+    <h3>Hardware Stack</h3>
+    <div class="field-row">
+      <label for="hardware-target">Provider</label>
+      <select id="hardware-target">
+        <option value="sim-local">Local Simulator</option>
+        <option value="ibm-qpu">IBM QPU</option>
+        <option value="aws-braket">AWS Braket</option>
+        <option value="ionq">IonQ</option>
+        <option value="classical-only">Classical Only</option>
+      </select>
+    </div>
+
+    <div class="field-row">
+      <label for="hardware-preset">Preset</label>
+      <select id="hardware-preset">
+        <option value="transmon-default">Transmon · 5–27q</option>
+        <option value="fluxonium-pilot">Fluxonium · 2–5q</option>
+        <option value="ion-chain">Ion Chain · 11–32q</option>
+        <option value="neutral-atom">Neutral Atom · 100+</option>
+      </select>
+    </div>
+
+    <h3>Drive–Probe–Drive</h3>
+    <div class="field-row">
+      <label for="drive-envelope">Envelope</label>
+      <select id="drive-envelope">
+        <option value="gaussian">Gaussian</option>
+        <option value="square">Square</option>
+        <option value="drag">DRAG</option>
+        <option value="cosine">Cosine flat-top</option>
+      </select>
+    </div>
+
+    <div class="field-row">
+      <label for="adaptive-rule">Adaptive Rule</label>
+      <select id="adaptive-rule">
+        <option value="none">None</option>
+        <option value="kalman">Kalman</option>
+        <option value="bayes">Bayesian</option>
+        <option value="rl">RL Controller</option>
+      </select>
+    </div>
+
+    <div class="field-row">
+      <label for="probe-strength">Probe Strength (ε)</label>
+      <input id="probe-strength" type="number" step="0.01" min="0" max="1" value="0.2">
+    </div>
+
+    <div class="field-row">
+      <label for="probe-duration">Duration (τₚ, ns)</label>
+      <input id="probe-duration" type="number" step="5" min="5" max="5000" value="120">
+    </div>
+
+    <div class="field-row">
+      <label for="iterations">Iterations</label>
+      <input id="iterations" type="number" min="1" placeholder="e.g. 5">
+    </div>
+
+    <div class="field-row">
+      <label for="shot-limit">Shot Limit</label>
+      <input id="shot-limit" type="number" min="128" step="128" placeholder="leave empty for default">
+    </div>
+
+    <div class="field-row">
+      <label for="objective">Objective</label>
+      <select id="objective">
+        <option value="maximize-fidelity">Maximize Fidelity</option>
+        <option value="minimize-latency">Minimize Latency</option>
+        <option value="info-vs-damage">Info vs Damage</option>
+        <option value="stability-window">Stability Window</option>
+      </select>
+    </div>
+
+    <h3>Notes</h3>
+    <textarea id="notes" placeholder="Session annotations…"></textarea>
+
+    <h3>Run Control</h3>
+    <div class="controls-row">
+      <button id="btn-dry-run" class="secondary small">Dry Run</button>
+      <button id="btn-run" class="primary small">Launch Run</button>
+      <button id="btn-kill" class="danger small">Kill Switch</button>
+    </div>
+  </section>
+
+  <!-- CENTER COLUMN: KPIs & Agent -->
+  <section id="kpi-agent">
+    <h2>Live KPIs & Agent</h2>
+
+    <h3>Key Performance Indicators</h3>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Fidelity</div>
+        <div class="kpi-value" id="kpi-fidelity">—</div>
+        <div class="kpi-sub">Target ≥ 0.975</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Latency (µs)</div>
+        <div class="kpi-value" id="kpi-latency">—</div>
+        <div class="kpi-sub">End-to-end loop</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Back-action</div>
+        <div class="kpi-value" id="kpi-backaction">—</div>
+        <div class="kpi-sub">Info vs damage</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Shot Budget</div>
+        <div class="kpi-value" id="kpi-shots">—</div>
+        <div class="kpi-sub" id="kpi-shots-sub">No consumption</div>
+      </div>
+    </div>
+
+    <h3>LLM Agent Assistant</h3>
+    <div class="field-row">
+      <label for="agent-goal">Goal</label>
+      <textarea id="agent-goal" 
+                style="flex: 1; min-height: 60px;"
+                placeholder="Example: Maximize fidelity while keeping latency < 40 µs…"></textarea>
+    </div>
+
+    <div class="controls-row">
+      <label for="agent-temp">Temperature</label>
+      <input id="agent-temp" type="number" min="0" max="1" step="0.05" value="0.1" style="width: 70px;">
+      <label for="agent-model" style="flex: 0 0 auto;">Model Override</label>
+      <input id="agent-model" type="text" placeholder="e.g. gpt-4" style="flex: 1; min-width: 120px;">
+    </div>
+
+    <div class="controls-row">
+      <button id="btn-agent-suggest" class="primary small">Ask Agent</button>
+      <button id="btn-agent-apply" class="secondary small">Apply & Save</button>
+    </div>
+
+    <div class="agent-suggestion-box">
+      <span class="agent-status" id="agent-status">Idle</span>
+      <div id="agent-rationale" class="muted" style="margin-top: 8px;"></div>
+      <pre id="agent-json">No suggestion yet.</pre>
+    </div>
+  </section>
+
+  <!-- RIGHT COLUMN: Telemetry, Logs, Export -->
+  <section id="telemetry-log">
+    <h2>Telemetry & Export</h2>
+
+    <h3>Real-time Telemetry</h3>
+    <div class="controls-row">
+      <label for="telemetry-interval">Interval (ms)</label>
+      <input id="telemetry-interval" type="number" min="100" step="100" value="1000" style="width: 80px;">
+      <label for="telemetry-depth">Depth</label>
+      <input id="telemetry-depth" type="number" min="1" max="256" value="64" style="width: 60px;">
+      <button id="btn-telemetry-start" class="primary small">Start</button>
+      <button id="btn-telemetry-stop" class="secondary small">Stop</button>
+    </div>
+
+    <div class="telemetry-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Provider</th>
+            <th>Fidelity</th>
+            <th>Latency</th>
+            <th>Shots</th>
+          </tr>
+        </thead>
+        <tbody id="telemetry-body">
+          <tr><td colspan="5" class="muted">No telemetry yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Run Log</h3>
+    <div class="controls-row">
+      <button id="btn-log-refresh" class="small secondary">Refresh</button>
+      <button id="btn-log-clear" class="small danger">Clear</button>
+      <label for="log-limit" style="flex: 0 0 auto;">Limit</label>
+      <input id="log-limit" type="number" min="10" max="1000" step="10" value="200" style="width: 70px;">
+    </div>
+    <pre id="log-output">No logs yet.</pre>
+
+    <h3>Export Snapshot</h3>
+    <div class="controls-row">
+      <label for="export-format">Format</label>
+      <select id="export-format">
+        <option value="json">JSON</option>
+        <option value="csv">CSV</option>
+        <option value="notebook">Notebook</option>
+      </select>
+      <button id="btn-export" class="primary small">Export</button>
+    </div>
+    <textarea id="export-payload" class="export-textarea" readonly>Waiting for export…</textarea>
+  </section>
+</main>
+
+<script>
+  // ========== GLOBAL STATE ==========
+  let currentSession = null;
+  let sessions = [];
+  let telemetryTimer = null;
+  let lastAgentSuggestion = null;
+
+  function apiBase() {
+    return document.getElementById("api-base-url").value.trim().replace(/\/+$/, "");
+  }
+
+  function getHeaders() {
+    const headers = { "Content-Type": "application/json" };
+    const key = document.getElementById("api-key").value.trim();
+    if (key) headers["X-API-Key"] = key;
+    return headers;
+  }
+
+  function setHealth(status, label) {
+    const dot = document.getElementById("health-dot");
+    const pillLabel = document.getElementById("health-label");
+    pillLabel.textContent = label;
+    dot.classList.remove("ok", "bad");
+    if (status === "ok") dot.classList.add("ok");
+    else if (status === "bad") dot.classList.add("bad");
+  }
+
+  // ========== CONFIG HELPERS ==========
+  function readConfigFromForm() {
+    return {
+      hardware_target: document.getElementById("hardware-target").value,
+      hardware_preset: document.getElementById("hardware-preset").value,
+      drive_envelope: document.getElementById("drive-envelope").value,
+      probe_strength: parseFloat(document.getElementById("probe-strength").value) || 0.2,
+      probe_duration_ns: parseInt(document.getElementById("probe-duration").value || "120", 10),
+      adaptive_rule: document.getElementById("adaptive-rule").value,
+      objective: document.getElementById("objective").value,
+      notes: document.getElementById("notes").value || null,
+    };
+  }
+
+  function writeConfigToForm(cfg) {
+    if (!cfg) return;
+    document.getElementById("hardware-target").value = cfg.hardware_target;
+    document.getElementById("hardware-preset").value = cfg.hardware_preset;
+    document.getElementById("drive-envelope").value = cfg.drive_envelope;
+    document.getElementById("probe-strength").value = cfg.probe_strength.toFixed(3);
+    document.getElementById("probe-duration").value = cfg.probe_duration_ns;
+    document.getElementById("adaptive-rule").value = cfg.adaptive_rule;
+    document.getElementById("objective").value = cfg.objective;
+    document.getElementById("notes").value = cfg.notes || "";
+  }
+
+  function updateStatusLine(summary) {
+    document.getElementById("status-text").textContent = summary.status_text || "Active";
+    document.getElementById("current-session-id").textContent = summary.session_id || "—";
+  }
+
+  function updateKpisFromSummary(summary) {
+    const k = summary.last_kpis;
+    const kFid = document.getElementById("kpi-fidelity");
+    const kLat = document.getElementById("kpi-latency");
+    const kBack = document.getElementById("kpi-backaction");
+    const kShots = document.getElementById("kpi-shots");
+    const kShotsSub = document.getElementById("kpi-shots-sub");
+
+    if (!k) {
+      kFid.textContent = "—";
+      kLat.textContent = "—";
+      kBack.textContent = "—";
+      kShots.textContent = "—";
+      kShotsSub.textContent = "No consumption";
+      return;
+    }
+
+    kFid.textContent = k.fidelity.toFixed(4);
+    kLat.textContent = k.latency_us.toFixed(1);
+    kBack.textContent = k.backaction.toFixed(3);
+    kShots.textContent = `${k.shots_used} / ${k.shot_limit}`;
+    kShotsSub.textContent = `${(k.shots_used_fraction * 100).toFixed(1)}% budget`;
+  }
+
+  function renderSessionList() {
+    const container = document.getElementById("session-list");
+    container.innerHTML = "";
+
+    if (!sessions.length) {
+      const div = document.createElement("div");
+      div.className = "muted";
+      div.style.padding = "8px 12px";
+      div.textContent = "No sessions yet";
+      container.appendChild(div);
+      return;
+    }
+
+    sessions.forEach((s) => {
+      const div = document.createElement("div");
+      if (currentSession && currentSession.session_id === s.session_id) {
+        div.classList.add("active");
+      }
+
+      const left = document.createElement("span");
+      left.className = "sid";
+      left.textContent = s.session_id.substring(0, 8) + "…";
+      left.title = s.session_id;
+
+      const right = document.createElement("span");
+      right.className = "info";
+      right.textContent = `${(s.shots_used_fraction * 100).toFixed(0)}%`;
+
+      div.appendChild(left);
+      div.appendChild(right);
+      div.addEventListener("click", () => loadSession(s.session_id));
+
+      container.appendChild(div);
+    });
+  }
+
+  // ========== BACKEND CALLS ==========
+  async function pingBackend() {
+    const url = apiBase() + "/health";
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      if (!res.ok) {
+        setHealth("bad", "HTTP " + res.status);
+        return;
+      }
+      const data = await res.json();
+      setHealth("ok", "Online");
+    } catch (err) {
+      console.error("Health check failed:", err);
+      setHealth("bad", "Error");
+    }
+  }
+
+  async function refreshSessions() {
+    const url = apiBase() + "/sessions";
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      if (!res.ok) return;
+      sessions = await res.json();
+      renderSessionList();
+    } catch (err) {
+      console.error("refreshSessions error:", err);
+    }
+  }
+
+  async function loadSession(sessionId) {
+    const url = apiBase() + "/sessions/" + encodeURIComponent(sessionId);
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      if (!res.ok) return;
+      currentSession = await res.json();
+      updateStatusLine(currentSession);
+      writeConfigToForm(currentSession.config);
+      updateKpisFromSummary(currentSession);
+      renderSessionList();
+    } catch (err) {
+      console.error("loadSession error:", err);
+    }
+  }
+
+  async function newSession() {
+    const url = apiBase() + "/sessions";
+    const payload = {
+      session_id: null,
+      config: readConfigFromForm(),
+    };
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        alert("Failed to create session: HTTP " + res.status);
+        return;
+      }
+      currentSession = await res.json();
+      updateStatusLine(currentSession);
+      updateKpisFromSummary(currentSession);
+      await refreshSessions();
+    } catch (err) {
+      console.error("newSession error:", err);
+      alert("Failed to create session (see console).");
+    }
+  }
+
+  async function saveSession() {
+    if (!currentSession) {
+      alert("No active session to save.");
+      return;
+    }
+    const url = apiBase() + "/sessions";
+    const payload = {
+      session_id: currentSession.session_id,
+      config: readConfigFromForm(),
+    };
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        alert("Failed to save session: HTTP " + res.status);
+        return;
+      }
+      currentSession = await res.json();
+      updateStatusLine(currentSession);
+      updateKpisFromSummary(currentSession);
+      await refreshSessions();
+    } catch (err) {
+      console.error("saveSession error:", err);
+      alert("Failed to save session (see console).");
+    }
+  }
+
+  async function launchRun(mode) {
+    if (!currentSession) {
+      alert("Create or select a session first.");
+      return;
+    }
+
+    const url = apiBase() + "/sessions/" + 
+      encodeURIComponent(currentSession.session_id) + "/run";
+
+    const numIterStr = document.getElementById("iterations").value.trim();
+    const shotLimitStr = document.getElementById("shot-limit").value.trim();
+
+    const payload = {
+      mode: mode === "dryrun" ? "dryrun" : "run",
+      num_iterations: numIterStr ? parseInt(numIterStr, 10) : null,
+      shot_limit: shotLimitStr ? parseInt(shotLimitStr, 10) : null,
+    };
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        alert("Run failed: " + (body.detail || "HTTP " + res.status));
+        return;
+      }
+      currentSession = body.session;
+      updateStatusLine(currentSession);
+      writeConfigToForm(currentSession.config);
+      updateKpisFromSummary(currentSession);
+      await refreshSessions();
+    } catch (err) {
+      console.error("launchRun error:", err);
+      alert("Run failed (see console).");
+    }
+  }
+
+  async function killRun() {
+    if (!currentSession) {
+      alert("No active session.");
+      return;
+    }
+    const url = apiBase() + "/sessions/" + 
+      encodeURIComponent(currentSession.session_id) + "/kill";
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: getHeaders(),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        alert("Kill switch failed: " + (body.detail || "HTTP " + res.status));
+        return;
+      }
+      await loadSession(currentSession.session_id);
+    } catch (err) {
+      console.error("killRun error:", err);
+      alert("Kill switch failed (see console).");
+    }
+  }
+
+  async function refreshLog() {
+    if (!currentSession) {
+      document.getElementById("log-output").textContent = "No active session.";
+      return;
+    }
+    const limit = parseInt(document.getElementById("log-limit").value || "200", 10);
+    const url = apiBase() + "/sessions/" +
+      encodeURIComponent(currentSession.session_id) +
+      "/logs?limit=" + encodeURIComponent(limit);
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      const body = await res.json();
+      if (!res.ok) {
+        document.getElementById("log-output").textContent =
+          "Failed to fetch logs: " + (body.detail || ("HTTP " + res.status));
+        return;
+      }
+      const lines = body.lines || [];
+      document.getElementById("log-output").textContent = 
+        lines.length ? lines.join("\n") : "No logs yet.";
+    } catch (err) {
+      console.error("refreshLog error:", err);
+      document.getElementById("log-output").textContent = 
+        "Failed to fetch logs (see console).";
+    }
+  }
+
+  async function clearLog() {
+    if (!currentSession) {
+      alert("No active session.");
+      return;
+    }
+    const url = apiBase() + "/sessions/" +
+      encodeURIComponent(currentSession.session_id) + "/logs";
+    try {
+      const res = await fetch(url, {
+        method: "DELETE",
+        headers: getHeaders(),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        alert("Failed to clear logs: " + (body.detail || "HTTP " + res.status));
+        return;
+      }
+      await refreshLog();
+    } catch (err) {
+      console.error("clearLog error:", err);
+      alert("Failed to clear logs (see console).");
+    }
+  }
+
+  async function fetchTelemetryOnce() {
+    if (!currentSession) {
+      const tbody = document.getElementById("telemetry-body");
+      tbody.innerHTML = '<tr><td colspan="5" class="muted">No active session.</td></tr>';
+      return;
+    }
+    const depth = parseInt(document.getElementById("telemetry-depth").value || "64", 10);
+    const url = apiBase() + "/sessions/" +
+      encodeURIComponent(currentSession.session_id) +
+      "/telemetry?limit=" + encodeURIComponent(depth);
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      const body = await res.json();
+      const rows = body.rows || [];
+      const tbody = document.getElementById("telemetry-body");
+      tbody.innerHTML = "";
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="muted">No telemetry yet.</td></tr>';
+        return;
+      }
+      rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        const tdTs = document.createElement("td");
+        const tdProv = document.createElement("td");
+        const tdFid = document.createElement("td");
+        const tdLat = document.createElement("td");
+        const tdShots = document.createElement("td");
+        tdTs.textContent = (row.timestamp || "").substring(0, 8);
+        tdProv.textContent = row.provider || "—";
+        tdFid.textContent = (row.fidelity ?? 0).toFixed(4);
+        tdLat.textContent = (row.latency_us ?? 0).toFixed(1);
+        tdShots.textContent = row.shots_used ?? 0;
+        tr.appendChild(tdTs);
+        tr.appendChild(tdProv);
+        tr.appendChild(tdFid);
+        tr.appendChild(tdLat);
+        tr.appendChild(tdShots);
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error("fetchTelemetryOnce error:", err);
+    }
+  }
+
+  function startTelemetry() {
+    stopTelemetry();
+    const interval = parseInt(document.getElementById("telemetry-interval").value || "1000", 10);
+    telemetryTimer = setInterval(fetchTelemetryOnce, interval);
+    fetchTelemetryOnce();
+  }
+
+  function stopTelemetry() {
+    if (telemetryTimer !== null) {
+      clearInterval(telemetryTimer);
+      telemetryTimer = null;
+    }
+  }
+
+  async function exportSnapshot() {
+    if (!currentSession) {
+      document.getElementById("export-payload").value = "No active session.";
+      return;
+    }
+    const format = document.getElementById("export-format").value;
+    const url = apiBase() + "/sessions/" +
+      encodeURIComponent(currentSession.session_id) +
+      "/export?format=" + encodeURIComponent(format);
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      const body = await res.json();
+      if (!res.ok) {
+        document.getElementById("export-payload").value =
+          "Export failed: " + (body.detail || ("HTTP " + res.status));
+        return;
+      }
+      document.getElementById("export-payload").value = body.payload || "No data";
+    } catch (err) {
+      console.error("exportSnapshot error:", err);
+      document.getElementById("export-payload").value =
+        "Export failed (see console).";
+    }
+  }
+
+  // ========== AGENT INTEGRATION ==========
+  async function askAgent() {
+    if (!currentSession) {
+      alert("Create or select a session first.");
+      return;
+    }
+    const goal = document.getElementById("agent-goal").value.trim();
+    if (!goal) {
+      alert("Please enter a goal for the agent.");
+      return;
+    }
+
+    const tempStr = document.getElementById("agent-temp").value.trim();
+    const modelOverride = document.getElementById("agent-model").value.trim();
+
+    const payload = {
+      goal: goal,
+      model: modelOverride || null,
+      temperature: tempStr ? parseFloat(tempStr) : null,
+    };
+
+    const statusEl = document.getElementById("agent-status");
+    statusEl.textContent = "Querying…";
+    document.getElementById("agent-json").textContent = "Querying agent…";
+    document.getElementById("agent-rationale").textContent = "";
+
+    const url = apiBase() + "/sessions/" +
+      encodeURIComponent(currentSession.session_id) + "/agent-suggestion";
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        const msg = body.detail || ("HTTP " + res.status);
+        statusEl.textContent = "Error: " + msg;
+        document.getElementById("agent-json").textContent = "Error: " + msg;
+        return;
+      }
+
+      lastAgentSuggestion = body;
+      statusEl.textContent = "Ready";
+
+      document.getElementById("agent-json").textContent =
+        JSON.stringify(body.recommended_config, null, 2);
+
+      const rationale = body.rationale || "";
+      const warnings = body.warnings || [];
+      let text = rationale;
+      if (warnings.length) {
+        text += "\n\n⚠ Warnings:\n• " + warnings.join("\n• ");
+      }
+      document.getElementById("agent-rationale").textContent = text;
+
+    } catch (err) {
+      console.error("askAgent error:", err);
+      statusEl.textContent = "Error";
+      document.getElementById("agent-json").textContent =
+        "Agent call failed (see console).";
+    }
+  }
+
+  async function applyAgentSuggestion() {
+    if (!currentSession) {
+      alert("No active session.");
+      return;
+    }
+    if (!lastAgentSuggestion || !lastAgentSuggestion.recommended_config) {
+      alert("No agent suggestion to apply.");
+      return;
+    }
+
+    const cfg = readConfigFromForm();
+    const patch = lastAgentSuggestion.recommended_config;
+    const merged = Object.assign({}, cfg, patch);
+
+    writeConfigToForm(merged);
+    await saveSession();
+
+    document.getElementById("agent-status").textContent = "Applied & saved";
+  }
+
+  // ========== EVENT WIRING ==========
+  function init() {
+    document.getElementById("btn-ping").addEventListener("click", pingBackend);
+    document.getElementById("btn-refresh-sessions").addEventListener("click", refreshSessions);
+    document.getElementById("btn-new-session").addEventListener("click", newSession);
+    document.getElementById("btn-save-session").addEventListener("click", saveSession);
+
+    document.getElementById("btn-dry-run").addEventListener("click", () => launchRun("dryrun"));
+    document.getElementById("btn-run").addEventListener("click", () => launchRun("run"));
+    document.getElementById("btn-kill").addEventListener("click", killRun);
+
+    document.getElementById("btn-log-refresh").addEventListener("click", refreshLog);
+    document.getElementById("btn-log-clear").addEventListener("click", clearLog);
+
+    document.getElementById("btn-telemetry-start").addEventListener("click", startTelemetry);
+    document.getElementById("btn-telemetry-stop").addEventListener("click", stopTelemetry);
+
+    document.getElementById("btn-export").addEventListener("click", exportSnapshot);
+
+    document.getElementById("btn-agent-suggest").addEventListener("click", askAgent);
+    document.getElementById("btn-agent-apply").addEventListener("click", applyAgentSuggestion);
+
+    pingBackend();
+    refreshSessions();
+  }
+
+  window.addEventListener("DOMContentLoaded", init);
+</script>
+
+</body>
+</html>
