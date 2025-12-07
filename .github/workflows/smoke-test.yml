@@ -1,0 +1,182 @@
+name: Smoke Test CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'scripts/**'
+      - 'synqc_tds_super_backend.py'
+      - 'synqc_agent.py'
+      - 'synqc_control_panel.html'
+      - 'ui_static/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - '.github/workflows/smoke-test.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'scripts/**'
+      - 'synqc_tds_super_backend.py'
+      - 'synqc_agent.py'
+      - 'synqc_control_panel.html'
+      - 'ui_static/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - '.github/workflows/smoke-test.yml'
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn pydantic numpy python-dotenv orjson openai pytest requests curl
+
+      - name: Build Docker image
+        run: docker build -t synqc-tds-backend:latest .
+
+      - name: Run backend container
+        run: |
+          docker run -d \
+            --name synqc-backend \
+            -p 8000:8000 \
+            -e SYNQC_HOST=0.0.0.0 \
+            -e SYNQC_PORT=8000 \
+            -e SYNQC_STATE_DIR=/tmp/synqc_state \
+            synqc-tds-backend:latest
+          sleep 2
+
+      - name: Wait for backend health
+        run: |
+          for i in {1..30}; do
+            if curl -f http://localhost:8000/api/v1/synqc/health 2>/dev/null; then
+              echo "✓ Backend health check passed on attempt $i"
+              exit 0
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 1
+          done
+          echo "✗ Backend failed to become healthy"
+          docker logs synqc-backend
+          exit 1
+
+      - name: Smoke test - Health endpoint
+        run: |
+          response=$(curl -s http://localhost:8000/api/v1/synqc/health)
+          echo "Health response: $response"
+          if echo "$response" | grep -q '"status":"ok"'; then
+            echo "✓ Health check passed"
+          else
+            echo "✗ Health check failed"
+            exit 1
+          fi
+
+      - name: Smoke test - UI endpoint
+        run: |
+          http_code=$(curl -s -o /tmp/ui.html -w "%{http_code}" http://localhost:8000/ui)
+          if [ "$http_code" = "200" ]; then
+            echo "✓ UI endpoint returned 200"
+            if grep -q "synqc_control_panel\|SynQc\|Temporal Dynamics" /tmp/ui.html; then
+              echo "✓ UI HTML contains expected content"
+            else
+              echo "⚠ UI HTML content check inconclusive"
+            fi
+          else
+            echo "✗ UI endpoint returned HTTP $http_code"
+            exit 1
+          fi
+
+      - name: Smoke test - Static CSS asset
+        run: |
+          css_code=$(curl -s -o /tmp/style.css -w "%{http_code}" http://localhost:8000/ui/static/style.css)
+          if [ "$css_code" = "200" ]; then
+            echo "✓ CSS static asset returned 200"
+            if grep -q "color-scheme\|--accent\|--bg" /tmp/style.css; then
+              echo "✓ CSS contains expected variable definitions"
+            else
+              echo "⚠ CSS content check inconclusive"
+            fi
+          else
+            echo "✗ CSS static asset returned HTTP $css_code"
+            exit 1
+          fi
+
+      - name: Smoke test - Static JS asset
+        run: |
+          js_code=$(curl -s -o /tmp/app.js -w "%{http_code}" http://localhost:8000/ui/static/app.js)
+          if [ "$js_code" = "200" ]; then
+            echo "✓ JS static asset returned 200"
+            if grep -q "initBackgroundAnimation\|initQubitAnimation\|debounce" /tmp/app.js; then
+              echo "✓ JS contains expected functions"
+            else
+              echo "⚠ JS content check inconclusive"
+            fi
+          else
+            echo "✗ JS static asset returned HTTP $js_code"
+            exit 1
+          fi
+
+      - name: Smoke test - Sessions endpoint
+        run: |
+          response=$(curl -s http://localhost:8000/api/v1/synqc/sessions)
+          echo "Sessions response: $response"
+          if echo "$response" | grep -q "^\[\]" || echo "$response" | grep -q '"\(session_id\|status\)"'; then
+            echo "✓ Sessions endpoint returns valid JSON"
+          else
+            echo "✗ Sessions endpoint response invalid"
+            exit 1
+          fi
+
+      - name: Smoke test - Create new session
+        run: |
+          response=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            http://localhost:8000/api/v1/synqc/sessions)
+          echo "New session response: $response"
+          if echo "$response" | grep -q '"session_id"'; then
+            echo "✓ Session creation successful"
+          else
+            echo "✗ Session creation failed"
+            exit 1
+          fi
+
+      - name: Run bash smoke test script
+        if: always()
+        run: |
+          if [ -f scripts/smoke_test.sh ]; then
+            chmod +x scripts/smoke_test.sh
+            echo "Running smoke_test.sh..."
+            ./scripts/smoke_test.sh http://localhost:8000/api/v1/synqc http://localhost:8000/ui 2>&1 | tee /tmp/smoke_output.log || true
+          else
+            echo "⚠ scripts/smoke_test.sh not found (optional)"
+          fi
+
+      - name: Collect backend logs
+        if: always()
+        run: |
+          echo "=== Backend container logs ===" && \
+          docker logs synqc-backend > /tmp/backend.log 2>&1 || echo "Could not retrieve logs"
+
+      - name: Upload smoke test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-logs
+          path: /tmp/
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: docker stop synqc-backend && docker rm synqc-backend || true

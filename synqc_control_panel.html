@@ -1,0 +1,1464 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SynQc TDS · Quantum Control Console</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="/ui/static/style.css">
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="glass-overlay"></div>
+
+<header>
+  <div class="title-block">
+    <h1 class="app-title">SYNQC TDS <span class="identity">Quantum Control Console</span></h1>
+    <div class="title-chip"><span class="title-chip-dot"></span> Drive–Probe–Drive · Temporal Dynamics Series</div>
+    <div class="tagline">Hybrid classical–quantum controller with SynQc agent advisory.</div>
+  </div>
+
+  <div class="header-controls">
+    <div class="field-row" style="margin:0;">
+      <label for="api-base-url">API base URL</label>
+      <input id="api-base-url" type="text" value="http://127.0.0.1:8000/api/v1/synqc" style="width:260px;">
+    </div>
+    <div class="field-row" style="margin:0;">
+      <label for="api-key">API key (optional)</label>
+      <input id="api-key" type="text" placeholder="X-API-Key for multi-user labs" style="width:220px;">
+      <button class="small secondary" id="btn-ping">Ping backend</button>
+      <span class="pill"><span class="pill-dot" id="health-dot"></span> <span id="health-label">Unknown</span></span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Left column -->
+  <section id="backend-session">
+    <h2>Session · Hardware</h2>
+    <div class="status-line" id="status-line"><span class="status" id="status-text">No session yet</span><span class="badge">Session: <span id="current-session-id">—</span></span></div>
+
+    <h3>Session lifecycle</h3>
+    <div class="flex-row">
+      <button id="btn-new-session">New session</button>
+      <button id="btn-save-session" class="secondary">Save session</button>
+      <button id="btn-refresh-sessions" class="small secondary">Refresh sessions</button>
+    </div>
+
+    <h3>Sessions on disk</h3>
+    <div class="session-list" id="session-list"><div class="muted">No sessions yet. Press “New session”.</div></div>
+
+    <h3>Hardware stack</h3>
+    <div class="field-row"><label for="hardware-target">Provider</label><select id="hardware-target"><option value="sim-local">Local simulator (CPU)</option><option value="ibm-qpu">IBM Quantum QPU</option><option value="aws-braket">AWS Braket</option><option value="ionq">IonQ</option><option value="classical-only">Classical lab hardware only</option></select></div>
+    <div class="field-row"><label for="hardware-preset">Preset</label><select id="hardware-preset"><option value="transmon-default">Transmon default · 5–27q</option><option value="fluxonium-pilot">Fluxonium pilot · 2–5q</option><option value="ion-chain">Trapped-ion chain · 11–32q</option><option value="neutral-atom">Neutral atom array · 100+ sites</option></select></div>
+
+    <h3>Drive–Probe–Drive configuration</h3>
+    <div class="field-row"><label for="drive-envelope">Drive envelope</label><select id="drive-envelope"><option value="gaussian">Gaussian</option><option value="square">Square</option><option value="drag">DRAG</option><option value="cosine">Cosine flat-top</option></select></div>
+
+    <div class="field-row"><label for="adaptive-rule">Adaptive rule</label><select id="adaptive-rule"><option value="none">None (fixed)</option><option value="kalman">Kalman update</option><option value="bayes">Bayesian branching</option><option value="rl">RL controller</option></select></div>
+
+    <div class="field-row"><label>Probe strength (ε)</label><input id="probe-strength" type="number" step="0.005" min="0.0" max="1.0" value="0.2"></div>
+    <div class="field-row"><label>Probe duration (τₚ, ns)</label><input id="probe-duration" type="number" step="5" min="5" max="5000" value="120"></div>
+
+    <div class="field-row"><label for="iterations">Iterations per run</label><input id="iterations" type="number" min="1" step="1" placeholder="e.g. 1–100" value=""></div>
+    <div class="field-row"><label for="shot-limit">Shot limit per session</label><input id="shot-limit" type="number" min="1" step="100" placeholder="leave empty for default"></div>
+
+    <div class="field-row"><label for="objective">Objective</label><select id="objective"><option value="maximize-fidelity">Maximize DPD fidelity</option><option value="minimize-latency">Minimize loop latency</option><option value="info-vs-damage">Info gain vs back-action</option><option value="stability-window">Stability window over time</option></select></div>
+
+    <h3>Notes</h3>
+    <textarea id="notes" placeholder="Session / run annotation"></textarea>
+
+    <h3>Run control</h3>
+    <div class="flex-row"><button id="btn-dry-run">Dry-run (no hardware)</button><button id="btn-run">Launch run</button><button id="btn-kill" class="danger">Kill switch</button></div>
+    <div class="muted" style="margin-top:4px;">Maps to <code>/sessions/{id}/run</code> (mode=<code>run</code> or <code>dryrun</code>) and <code>/sessions/{id}/kill</code>, plus iteration and shot hints.</div>
+  </section>
+
+  <!-- Middle column -->
+  <section id="kpi-agent">
+    <h2>KPIs · SynQc Agent</h2>
+    <h3>Live KPIs</h3>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">DPD fidelity</div><div class="kpi-value" id="kpi-fidelity">—</div><div class="kpi-sub">target ≥ 0.975</div></div>
+      <div class="kpi-card"><div class="kpi-label">Latency (µs)</div><div class="kpi-value" id="kpi-latency">—</div><div class="kpi-sub">loop end-to-end</div></div>
+      <div class="kpi-card"><div class="kpi-label">Back-action</div><div class="kpi-value" id="kpi-backaction">—</div><div class="kpi-sub">info vs damage</div></div>
+      <div class="kpi-card"><div class="kpi-label">Shot budget</div><div class="kpi-value" id="kpi-shots">—</div><div class="kpi-sub" id="kpi-shots-sub">No consumption yet.</div></div>
+    </div>
+
+    <h3>Agent configuration</h3>
+    <div class="agent-controls"><label for="agent-goal" style="min-width:120px;">High-level goal</label><textarea id="agent-goal" style="flex:1;" placeholder="Example: Maximize fidelity while keeping latency &lt; 40 µs and shot usage &lt; 50%."></textarea></div>
+    <div class="agent-controls"><label for="agent-temp" style="min-width:120px;">Agent temperature</label><input id="agent-temp" type="number" min="0" max="1" step="0.05" value="0.1" style="width:80px;"><label for="agent-model" style="min-width:auto;">Model override</label><input id="agent-model" type="text" placeholder="optional, e.g. gpt-4.1-mini" style="flex:1; min-width:160px;"></div>
+    <div class="agent-controls"><button id="btn-agent-suggest">One-shot suggestion</button><button id="btn-agent-apply" class="secondary">Apply suggestion & save</button><span class="muted" id="agent-status">Idle.</span></div>
+
+    <h3>Chat with SynQc agent</h3>
+    <div id="chat-window" class="chat-window"><div class="muted">No conversation yet. Start by describing your experiment goals.</div></div>
+    <div class="agent-controls"><textarea id="chat-input" style="flex:1; min-height:40px; max-height:80px;" placeholder="Ask the agent about trade-offs, new runs, or interpretations…"></textarea><button id="btn-chat-send">Send</button><button id="btn-chat-clear" class="secondary small">Clear</button></div>
+
+    <h3>Qubit visualization · Drive–Probe–Drive</h3>
+    <div class="qubit-panel"><div class="qubit-header"><span class="muted">Bloch sphere · D–P–D cycle (animated)</span><div class="phase-labels"><div class="phase-chip"><span class="phase-dot drive"></span> Drive</div><div class="phase-chip"><span class="phase-dot probe"></span> Probe</div><div class="phase-chip"><span class="phase-dot idle"></span> Relax</div></div></div><canvas id="qubit-canvas"></canvas><div class="qubit-timeline"><span>Cycle phase</span><div class="timeline-bar"><div class="timeline-fill" id="qubit-timeline-fill"></div></div><span id="qubit-phase-label">Idle</span></div></div>
+
+    <h3>Agent output</h3>
+    <pre id="agent-json">No suggestion yet.</pre>
+    <div class="muted" id="agent-rationale"></div>
+  </section>
+
+  <!-- Right column -->
+  <section id="telemetry-log">
+    <h2>Telemetry · Logs · Export</h2>
+
+    <h3>Real-time telemetry</h3>
+    <div class="telemetry-controls"><label for="telemetry-interval">Poll interval (ms)</label><input id="telemetry-interval" type="number" min="100" step="100" value="1000" style="width:80px;"><label for="telemetry-depth">History depth</label><input id="telemetry-depth" type="number" min="1" max="256" step="1" value="64" style="width:70px;"><button id="btn-telemetry-start" class="small">Start</button><button id="btn-telemetry-stop" class="small secondary">Stop</button></div>
+    <div style="max-height:150px; overflow:auto; border-radius:8px; border:1px solid rgba(30,64,175,0.7);"><table><thead><tr><th>Timestamp</th><th>Provider</th><th>Fidelity</th><th>Latency (µs)</th><th>Shots</th></tr></thead><tbody id="telemetry-body"><tr><td colspan="5" class="muted">No telemetry yet.</td></tr></tbody></table></div>
+
+    <h3>Run log</h3>
+    <div class="log-controls"><button id="btn-log-refresh" class="small">Refresh log</button><button id="btn-log-clear" class="small secondary">Clear log</button><label for="log-limit">Limit</label><input id="log-limit" type="number" min="10" max="1000" step="10" value="200" style="width:70px;"></div>
+    <pre id="log-output">No logs yet.</pre>
+
+    <h3>Export snapshot</h3>
+    <div class="export-controls"><label for="export-format">Format</label><select id="export-format"><option value="json">JSON</option><option value="csv">CSV</option><option value="notebook">Notebook cell payload</option></select><button id="btn-export">Export</button></div>
+    <textarea id="export-payload" class="export-payload" readonly>Waiting for export…</textarea>
+  </section>
+</main>
+
+<script src="/ui/static/app.js" defer></script>
+
+</body>
+</html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SynQc Temporal Dynamics Series – Control Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                   Segoe UI, sans-serif;
+      color-scheme: dark;
+      --bg: #050509;
+      --bg-elevated: #101018;
+      --bg-softer: #181822;
+      --border-subtle: #26263a;
+      --accent: #7dd3fc;
+      --accent-soft: rgba(125, 211, 252, 0.1);
+      --accent-strong: #22d3ee;
+      --text: #e5e7eb;
+      --text-muted: #9ca3af;
+      --danger: #f97373;
+      --success: #4ade80;
+      --warning: #eab308;
+      --radius: 10px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #0f172a 0, #020617 55%, #000 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: linear-gradient(90deg, rgba(15,23,42,0.95), rgba(6,78,59,0.9));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    header h1 span {
+      font-weight: 300;
+      color: var(--accent);
+    }
+
+    .tagline {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) minmax(380px, 1.2fr) minmax(280px, 0.9fr);
+      gap: 16px;
+      padding: 16px;
+    }
+
+    @media (max-width: 1100px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    section {
+      background: radial-gradient(circle at top left,
+                  rgba(148,163,184,0.16) 0, rgba(15,23,42,0.96) 35%, #020617 100%);
+      border-radius: var(--radius);
+      border: 1px solid var(--border-subtle);
+      padding: 12px 16px 16px;
+      box-shadow: 0 16px 40px rgba(15,23,42,0.7);
+    }
+
+    section h2 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+    }
+
+    section h3 {
+      margin: 12px 0 4px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+      margin-bottom: 6px;
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--text-muted);
+      min-width: 120px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+      background: var(--bg-softer);
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+      padding: 4px 8px;
+      color: var(--text);
+      font-size: 12px;
+      width: 100%;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+      max-height: 180px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    button {
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.4);
+      background: linear-gradient(135deg, var(--accent-soft), rgba(15,23,42,0.95));
+      color: var(--accent-strong);
+      font-size: 12px;
+      padding: 4px 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      border-color: var(--accent-strong);
+      box-shadow: 0 0 0 1px rgba(34,211,238,0.4);
+    }
+
+    button.danger {
+      color: var(--danger);
+      background: linear-gradient(135deg, rgba(248,113,113,0.08), rgba(15,23,42,0.95));
+      border-color: rgba(248,113,113,0.5);
+    }
+
+    button.secondary {
+      background: rgba(15,23,42,0.9);
+      color: var(--text-muted);
+    }
+
+    button.small {
+      padding: 2px 8px;
+      font-size: 11px;
+    }
+
+    .pill {
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      font-size: 11px;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--text-muted);
+    }
+
+    .pill-dot.ok {
+      background: var(--success);
+    }
+
+    .pill-dot.bad {
+      background: var(--danger);
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .kpi-card {
+      background: var(--bg-softer);
+      border-radius: 8px;
+      padding: 8px;
+      border: 1px solid var(--border-subtle);
+      font-size: 11px;
+    }
+
+    .kpi-label {
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .kpi-value {
+      font-size: 16px;
+      font-weight: 500;
+      margin-top: 4px;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .status-line {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: space-between;
+    }
+
+    .status-line span.status {
+      font-weight: 500;
+      color: var(--accent);
+    }
+
+    .flex-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .flex-col {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .session-list {
+      font-size: 11px;
+      max-height: 140px;
+      overflow: auto;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-softer);
+      padding: 4px;
+    }
+
+    .session-list div {
+      padding: 3px 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .session-list div.active {
+      background: var(--accent-soft);
+      border: 1px solid rgba(56,189,248,0.6);
+    }
+
+    .session-list div span.sid {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    pre, code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+    }
+
+    pre {
+      background: var(--bg-softer);
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+      max-height: 220px;
+      overflow: auto;
+      margin: 4px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    th, td {
+      padding: 4px 6px;
+      border-bottom: 1px solid rgba(31,41,55,0.8);
+      text-align: left;
+    }
+
+    th {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .log-controls,
+    .export-controls,
+    .telemetry-controls,
+    .agent-controls {
+      margin-top: 4px;
+      margin-bottom: 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .export-payload {
+      width: 100%;
+      min-height: 80px;
+      max-height: 200px;
+      font-size: 11px;
+    }
+
+    .muted {
+      color: var(--text-muted);
+    }
+
+    .badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(148,163,184,0.4);
+    }
+
+    /* Chat UI */
+    .chat-window {
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-softer);
+      padding: 8px;
+      max-height: 240px;
+      overflow-y: auto;
+      margin-top: 4px;
+    }
+
+    .chat-message {
+      margin-bottom: 6px;
+      display: flex;
+    }
+
+    .chat-message.user {
+      justify-content: flex-end;
+    }
+
+    .chat-message.agent {
+      justify-content: flex-start;
+    }
+
+    .chat-bubble {
+      max-width: 80%;
+      padding: 6px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(15,23,42,0.95);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .chat-message.user .chat-bubble {
+      background: linear-gradient(135deg, var(--accent-soft), rgba(15,23,42,0.95));
+      border-color: rgba(56,189,248,0.7);
+    }
+
+    .chat-meta {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>SynQc TDS <span>Interstellar Control Console</span></h1>
+    <div class="tagline">Drive–Probe–Drive session controller · local sim + quantum backends</div>
+  </div>
+  <div class="flex-col" style="align-items:flex-end;">
+    <div class="field-row" style="margin:0;">
+      <label for="api-base-url">API base URL</label>
+      <input id="api-base-url"
+             type="text"
+             value="http://127.0.0.1:8000/api/v1/synqc"
+             style="width:260px;">
+    </div>
+    <div class="field-row" style="margin:0;">
+      <label for="api-key">API key (optional)</label>
+      <input id="api-key" type="text" placeholder="X-API-Key for multi-user labs" style="width:220px;">
+      <button class="small secondary" id="btn-ping">Ping backend</button>
+      <span class="pill" id="health-pill">
+        <span class="pill-dot" id="health-dot"></span>
+        <span id="health-label">Unknown</span>
+      </span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Left column: backend + hardware + DPD config -->
+  <section id="backend-session">
+    <h2>Backend · Session</h2>
+
+    <div class="status-line" id="status-line">
+      <span class="status" id="status-text">No session yet</span>
+      <span class="badge">
+        Session: <span id="current-session-id">—</span>
+      </span>
+    </div>
+
+    <h3>Session lifecycle</h3>
+    <div class="flex-row">
+      <button id="btn-new-session">New session</button>
+      <button id="btn-save-session" class="secondary">Save session</button>
+      <button id="btn-refresh-sessions" class="small secondary">Refresh sessions</button>
+    </div>
+
+    <h3>Sessions on disk</h3>
+    <div class="session-list" id="session-list">
+      <div class="muted">No sessions yet. Press “New session”.</div>
+    </div>
+
+    <h3>Hardware stack</h3>
+    <div class="field-row">
+      <label for="hardware-target">Provider</label>
+      <select id="hardware-target">
+        <option value="sim-local">Local simulator (CPU)</option>
+        <option value="ibm-qpu">IBM Quantum QPU</option>
+        <option value="aws-braket">AWS Braket</option>
+        <option value="ionq">IonQ</option>
+        <option value="classical-only">Classical lab hardware only</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <label for="hardware-preset">Hardware preset</label>
+      <select id="hardware-preset">
+        <option value="transmon-default">Transmon default · 5–27q</option>
+        <option value="fluxonium-pilot">Fluxonium pilot · 2–5q</option>
+        <option value="ion-chain">Trapped-ion chain · 11–32q</option>
+        <option value="neutral-atom">Neutral atom array · 100+ sites</option>
+      </select>
+    </div>
+
+    <h3>Notes</h3>
+    <textarea id="notes" placeholder="Session / run annotation"></textarea>
+
+    <h3>Drive–Probe–Drive configuration</h3>
+    <div class="field-row">
+      <label for="drive-envelope">Drive envelope</label>
+      <select id="drive-envelope">
+        <option value="gaussian">Gaussian</option>
+        <option value="square">Square</option>
+        <option value="drag">DRAG</option>
+        <option value="cosine">Cosine flat-top</option>
+      </select>
+    </div>
+
+    <div class="field-row">
+      <label for="adaptive-rule">Adaptive rule</label>
+      <select id="adaptive-rule">
+        <option value="none">None (fixed)</option>
+        <option value="kalman">Kalman update</option>
+        <option value="bayes">Bayesian branching</option>
+        <option value="rl">RL controller</option>
+      </select>
+    </div>
+
+    <div class="field-row">
+      <label>Probe strength (ε)</label>
+      <input id="probe-strength" type="number" step="0.005" min="0.0" max="1.0" value="0.2">
+    </div>
+    <div class="field-row">
+      <label>Probe duration (τₚ, ns)</label>
+      <input id="probe-duration" type="number" step="5" min="5" max="5000" value="120">
+    </div>
+
+    <div class="field-row">
+      <label for="iterations">Iterations per run</label>
+      <input id="iterations" type="number" min="1" step="1" placeholder="e.g. 1–100" value="">
+    </div>
+    <div class="field-row">
+      <label for="shot-limit">Shot limit per session</label>
+      <input id="shot-limit" type="number" min="1" step="100" placeholder="leave empty for default">
+    </div>
+
+    <div class="field-row">
+      <label for="objective">Objective</label>
+      <select id="objective">
+        <option value="maximize-fidelity">Maximize DPD fidelity</option>
+        <option value="minimize-latency">Minimize loop latency</option>
+        <option value="info-vs-damage">Info gain vs back-action</option>
+        <option value="stability-window">Stability window over time</option>
+      </select>
+    </div>
+
+    <h3>Run control</h3>
+    <div class="flex-row">
+      <button id="btn-dry-run">Dry-run (no hardware)</button>
+      <button id="btn-run">Launch run</button>
+      <button id="btn-kill" class="danger">Kill switch</button>
+    </div>
+    <div class="muted" style="margin-top:4px;">
+      Backend maps these to <code>/sessions/{id}/run</code> (mode=<code>run</code> or
+      <code>dryrun</code>) and <code>/sessions/{id}/kill</code>, plus
+      <code>num_iterations</code> and <code>shot_limit</code> hints.
+    </div>
+  </section>
+
+  <!-- Middle column: KPIs + agent assistant + chatbot -->
+  <section id="kpi-agent">
+    <h2>Live KPIs · Agent assistant</h2>
+
+    <h3>Live KPIs</h3>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">DPD fidelity</div>
+        <div class="kpi-value" id="kpi-fidelity">—</div>
+        <div class="kpi-sub">target ≥ 0.975</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Latency (µs)</div>
+        <div class="kpi-value" id="kpi-latency">—</div>
+        <div class="kpi-sub">loop end-to-end</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Back-action</div>
+        <div class="kpi-value" id="kpi-backaction">—</div>
+        <div class="kpi-sub">info vs damage</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Shot budget</div>
+        <div class="kpi-value" id="kpi-shots">—</div>
+        <div class="kpi-sub" id="kpi-shots-sub">No consumption yet.</div>
+      </div>
+    </div>
+
+    <h3>Agent assistant</h3>
+    <div class="agent-controls">
+      <label for="agent-goal" style="min-width:120px;">High-level goal</label>
+      <textarea id="agent-goal" style="flex:1;"
+        placeholder="Example: Maximize fidelity while keeping latency &lt; 40 µs and shot usage &lt; 50%."></textarea>
+    </div>
+    <div class="agent-controls">
+      <label for="agent-temp" style="min-width:120px;">Agent temperature</label>
+      <input id="agent-temp" type="number" min="0" max="1" step="0.05" value="0.1" style="width:80px;">
+      <label for="agent-model" style="min-width:auto;">Model override</label>
+      <input id="agent-model" type="text" placeholder="optional, e.g. gpt-4.1-mini"
+             style="flex:1; min-width:160px;">
+    </div>
+    <div class="agent-controls">
+      <button id="btn-agent-suggest">Ask agent (one-shot)</button>
+      <button id="btn-agent-apply" class="secondary">Apply suggestion & save</button>
+      <span class="muted" id="agent-status">Idle.</span>
+    </div>
+
+    <h3>Chat with agent</h3>
+    <div id="chat-window" class="chat-window">
+      <div class="muted">No conversation yet. Start by describing your experiment goals.</div>
+    </div>
+    <div class="agent-controls">
+      <textarea id="chat-input" style="flex:1; min-height:40px; max-height:80px;"
+        placeholder="Ask the agent about trade-offs, new runs, or interpretations…"></textarea>
+      <button id="btn-chat-send">Send</button>
+      <button id="btn-chat-clear" class="secondary small">Clear</button>
+    </div>
+
+    <div>
+      <h3 style="margin-top:10px;">Agent output</h3>
+      <pre id="agent-json">No suggestion yet.</pre>
+      <div class="muted" id="agent-rationale"></div>
+    </div>
+  </section>
+
+  <!-- Right column: telemetry + log + export -->
+  <section id="telemetry-log">
+    <h2>Telemetry · Log · Export</h2>
+
+    <h3>Real-time telemetry</h3>
+    <div class="telemetry-controls">
+      <label for="telemetry-interval">Poll interval (ms)</label>
+      <input id="telemetry-interval" type="number" min="100" step="100" value="1000" style="width:80px;">
+      <label for="telemetry-depth">History depth</label>
+      <input id="telemetry-depth" type="number" min="1" max="256" step="1" value="64" style="width:70px;">
+      <button id="btn-telemetry-start" class="small">Start monitoring</button>
+      <button id="btn-telemetry-stop" class="small secondary">Stop</button>
+    </div>
+    <div style="max-height:140px; overflow:auto; border-radius:6px; border:1px solid var(--border-subtle);">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Provider</th>
+            <th>Fidelity</th>
+            <th>Latency (µs)</th>
+            <th>Shots</th>
+          </tr>
+        </thead>
+        <tbody id="telemetry-body">
+          <tr><td colspan="5" class="muted">No telemetry yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Run log</h3>
+    <div class="log-controls">
+      <button id="btn-log-refresh" class="small">Refresh log</button>
+      <button id="btn-log-clear" class="small secondary">Clear log</button>
+      <label for="log-limit">Limit</label>
+      <input id="log-limit" type="number" min="10" max="1000" step="10" value="200" style="width:70px;">
+    </div>
+    <pre id="log-output">No logs yet.</pre>
+
+    <h3>Export</h3>
+    <div class="export-controls">
+      <label for="export-format">Format</label>
+      <select id="export-format">
+        <option value="json">JSON</option>
+        <option value="csv">CSV</option>
+        <option value="notebook">Notebook cell payload</option>
+      </select>
+      <button id="btn-export">Export snapshot</button>
+    </div>
+    <textarea id="export-payload" class="export-payload" readonly>Waiting for export…</textarea>
+  </section>
+</main>
+
+<script>
+  // ------------------------------------------------------------
+  // Global state
+  // ------------------------------------------------------------
+  let currentSession = null;
+  let sessions = [];
+  let telemetryTimer = null;
+  let lastAgentSuggestion = null;
+  let chatHistory = [];
+
+  function apiBase() {
+    return document.getElementById("api-base-url").value.trim().replace(/\/+$/, "");
+  }
+
+  function getHeaders() {
+    const headers = {
+      "Content-Type": "application/json",
+    };
+    const key = document.getElementById("api-key").value.trim();
+    if (key) {
+      headers["X-API-Key"] = key;
+    }
+    return headers;
+  }
+
+  function setHealth(status, label) {
+    const dot = document.getElementById("health-dot");
+    const pillLabel = document.getElementById("health-label");
+    pillLabel.textContent = label;
+    dot.classList.remove("ok", "bad");
+    if (status === "ok") {
+      dot.classList.add("ok");
+    } else if (status === "bad") {
+      dot.classList.add("bad");
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Session + config helpers
+  // ------------------------------------------------------------
+  function readConfigFromForm() {
+    return {
+      hardware_target: document.getElementById("hardware-target").value,
+      hardware_preset: document.getElementById("hardware-preset").value,
+      drive_envelope: document.getElementById("drive-envelope").value,
+      probe_strength: parseFloat(document.getElementById("probe-strength").value) || 0.2,
+      probe_duration_ns: parseInt(document.getElementById("probe-duration").value || "120", 10),
+      adaptive_rule: document.getElementById("adaptive-rule").value,
+      objective: document.getElementById("objective").value,
+      notes: document.getElementById("notes").value || null,
+    };
+  }
+
+  function writeConfigToForm(cfg) {
+    if (!cfg) return;
+    document.getElementById("hardware-target").value = cfg.hardware_target;
+    document.getElementById("hardware-preset").value = cfg.hardware_preset;
+    document.getElementById("drive-envelope").value = cfg.drive_envelope;
+    document.getElementById("probe-strength").value = cfg.probe_strength.toFixed(3);
+    document.getElementById("probe-duration").value = cfg.probe_duration_ns;
+    document.getElementById("adaptive-rule").value = cfg.adaptive_rule;
+    document.getElementById("objective").value = cfg.objective;
+    document.getElementById("notes").value = cfg.notes || "";
+  }
+
+  function updateStatusLine(summary) {
+    document.getElementById("status-text").textContent = summary.status_text;
+    document.getElementById("current-session-id").textContent = summary.session_id || "—";
+  }
+
+  function updateKpisFromSummary(summary) {
+    const k = summary.last_kpis;
+    const kFid = document.getElementById("kpi-fidelity");
+    const kLat = document.getElementById("kpi-latency");
+    const kBack = document.getElementById("kpi-backaction");
+    const kShots = document.getElementById("kpi-shots");
+    const kShotsSub = document.getElementById("kpi-shots-sub");
+
+    if (!k) {
+      kFid.textContent = "—";
+      kLat.textContent = "—";
+      kBack.textContent = "—";
+      kShots.textContent = "—";
+      kShotsSub.textContent = "No consumption yet.";
+      return;
+    }
+
+    kFid.textContent = k.fidelity.toFixed(4);
+    kLat.textContent = k.latency_us.toFixed(1);
+    kBack.textContent = k.backaction.toFixed(3);
+    kShots.textContent = `${k.shots_used} / ${k.shot_limit}`;
+    kShotsSub.textContent = `${(k.shots_used_fraction * 100).toFixed(1)}% of budget`;
+  }
+
+  function renderSessionList() {
+    const container = document.getElementById("session-list");
+    container.innerHTML = "";
+
+    if (!sessions.length) {
+      const div = document.createElement("div");
+      div.className = "muted";
+      div.textContent = "No sessions yet. Press “New session”.";
+      container.appendChild(div);
+      return;
+    }
+
+    sessions.forEach((s) => {
+      const div = document.createElement("div");
+      if (currentSession && currentSession.session_id === s.session_id) {
+        div.classList.add("active");
+      }
+      const left = document.createElement("span");
+      left.className = "sid";
+      left.textContent = s.session_id;
+      const right = document.createElement("span");
+      right.textContent = `${(s.shots_used_fraction * 100).toFixed(0)}% · ${s.mode_label}`;
+      right.className = "muted";
+
+      div.appendChild(left);
+      div.appendChild(right);
+
+      div.addEventListener("click", () => {
+        loadSession(s.session_id);
+      });
+
+      container.appendChild(div);
+    });
+  }
+
+  // ------------------------------------------------------------
+  // Backend calls
+  // ------------------------------------------------------------
+
+  async function pingBackend() {
+    const url = apiBase() + "/health";
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      if (!res.ok) {
+        setHealth("bad", "HTTP " + res.status);
+        return;
+      }
+      const data = await res.json();
+      setHealth("ok", data.status || "ok");
+    } catch (err) {
+      console.error("Health check failed:", err);
+      setHealth("bad", "Error");
+    }
+  }
+
+  async function refreshSessions() {
+    const url = apiBase() + "/sessions";
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      if (!res.ok) {
+        console.error("list_sessions failed", res.status);
+        return;
+      }
+      const data = await res.json();
+      sessions = data;
+      renderSessionList();
+    } catch (err) {
+      console.error("list_sessions error", err);
+    }
+  }
+
+  async function loadSession(sessionId) {
+    const url = apiBase() + "/sessions/" + encodeURIComponent(sessionId);
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      if (!res.ok) {
+        console.error("get_session failed", res.status);
+        return;
+      }
+      const summary = await res.json();
+      currentSession = summary;
+      updateStatusLine(summary);
+      writeConfigToForm(summary.config);
+      updateKpisFromSummary(summary);
+      renderSessionList();
+    } catch (err) {
+      console.error("get_session error", err);
+    }
+  }
+
+  async function newSession() {
+    const url = apiBase() + "/sessions";
+    const payload = {
+      session_id: null,
+      config: readConfigFromForm(),
+    };
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        alert("Failed to create session: HTTP " + res.status);
+        return;
+      }
+      const summary = await res.json();
+      currentSession = summary;
+      updateStatusLine(summary);
+      updateKpisFromSummary(summary);
+      await refreshSessions();
+    } catch (err) {
+      console.error("newSession error", err);
+      alert("Failed to create session (see console).");
+    }
+  }
+
+  async function saveSession() {
+    if (!currentSession) {
+      alert("No active session to save.");
+      return;
+    }
+    const url = apiBase() + "/sessions";
+    const payload = {
+      session_id: currentSession.session_id,
+      config: readConfigFromForm(),
+    };
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        alert("Failed to save session: HTTP " + res.status);
+        return;
+      }
+      const summary = await res.json();
+      currentSession = summary;
+      updateStatusLine(summary);
+      updateKpisFromSummary(summary);
+      await refreshSessions();
+    } catch (err) {
+      console.error("saveSession error", err);
+      alert("Failed to save session (see console).");
+    }
+  }
+
+  async function launchRun(mode) {
+    if (!currentSession) {
+      alert("Create or select a session first.");
+      return;
+    }
+    const url = apiBase() + "/sessions/" +
+      encodeURIComponent(currentSession.session_id) + "/run";
+
+    const numIterStr = document.getElementById("iterations").value.trim();
+    const shotLimitStr = document.getElementById("shot-limit").value.trim();
+
+    const payload = {
+      mode: mode === "dryrun" ? "dryrun" : "run",
+      num_iterations: numIterStr ? parseInt(numIterStr, 10) : null,
+      shot_limit: shotLimitStr ? parseInt(shotLimitStr, 10) : null,
+    };
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        alert("Run failed: " + (body.detail || "HTTP " + res.status));
+        return;
+      }
+      // RunResponse: { run: RunRecord, session: SessionSummary }
+      currentSession = body.session;
+      updateStatusLine(currentSession);
+      writeConfigToForm(currentSession.config);
+      updateKpisFromSummary(currentSession);
+      await refreshSessions();
+    } catch (err) {
+      console.error("launchRun error", err);
+      alert("Run failed (see console).");
+    }
+  }
+
+  async function killRun() {
+    if (!currentSession) {
+      alert("No active session.");
+      return;
+    }
+    const url = apiBase() + "/sessions/" +
+      encodeURIComponent(currentSession.session_id) + "/kill";
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: getHeaders(),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        alert("Kill switch failed: " + (body.detail || "HTTP " + res.status));
+        return;
+      }
+      await loadSession(currentSession.session_id);
+    } catch (err) {
+      console.error("killRun error", err);
+      alert("Kill switch failed (see console).");
+    }
+  }
+
+  async function refreshLog() {
+    if (!currentSession) {
+      document.getElementById("log-output").textContent = "No active session.";
+      return;
+    }
+    const limit = parseInt(document.getElementById("log-limit").value || "200", 10);
+    const url = apiBase() + "/sessions/" +
+      encodeURIComponent(currentSession.session_id) +
+      "/logs?limit=" + encodeURIComponent(limit);
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      const body = await res.json();
+      if (!res.ok) {
+        document.getElementById("log-output").textContent =
+          "Failed to fetch logs: " + (body.detail || ("HTTP " + res.status));
+        return;
+      }
+      const lines = body.lines || [];
+      if (!lines.length) {
+        document.getElementById("log-output").textContent = "No logs yet.";
+        return;
+      }
+      document.getElementById("log-output").textContent = lines.join("\n");
+    } catch (err) {
+      console.error("refreshLog error", err);
+      document.getElementById("log-output").textContent =
+        "Failed to fetch logs (see console).";
+    }
+  }
+
+  async function clearLog() {
+    if (!currentSession) {
+      alert("No active session.");
+      return;
+    }
+    const url = apiBase() + "/sessions/" +
+      encodeURIComponent(currentSession.session_id) + "/logs";
+    try {
+      const res = await fetch(url, {
+        method: "DELETE",
+        headers: getHeaders(),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        alert("Failed to clear logs: " + (body.detail || "HTTP " + res.status));
+        return;
+      }
+      await refreshLog();
+    } catch (err) {
+      console.error("clearLog error", err);
+      alert("Failed to clear logs (see console).");
+    }
+  }
+
+  async function fetchTelemetryOnce() {
+    if (!currentSession) {
+      const tbody = document.getElementById("telemetry-body");
+      tbody.innerHTML = '<tr><td colspan="5" class="muted">No active session.</td></tr>';
+      return;
+    }
+    const depth = parseInt(document.getElementById("telemetry-depth").value || "64", 10);
+    const url = apiBase() + "/sessions/" +
+      encodeURIComponent(currentSession.session_id) +
+      "/telemetry?limit=" + encodeURIComponent(depth);
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      const body = await res.json();
+      const rows = body.rows || [];
+      const tbody = document.getElementById("telemetry-body");
+      tbody.innerHTML = "";
+      if (!rows.length) {
+        tbody.innerHTML =
+          '<tr><td colspan="5" class="muted">No telemetry yet.</td></tr>';
+        return;
+      }
+      rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        const tdTs = document.createElement("td");
+        const tdProv = document.createElement("td");
+        const tdFid = document.createElement("td");
+        const tdLat = document.createElement("td");
+        const tdShots = document.createElement("td");
+        tdTs.textContent = row.timestamp;
+        tdProv.textContent = row.provider;
+        tdFid.textContent = (row.fidelity ?? 0).toFixed(4);
+        tdLat.textContent = (row.latency_us ?? 0).toFixed(1);
+        tdShots.textContent = row.shots_used ?? 0;
+        tr.appendChild(tdTs);
+        tr.appendChild(tdProv);
+        tr.appendChild(tdFid);
+        tr.appendChild(tdLat);
+        tr.appendChild(tdShots);
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error("fetchTelemetryOnce error", err);
+    }
+  }
+
+  function startTelemetry() {
+    stopTelemetry();
+    const interval = parseInt(document.getElementById("telemetry-interval").value || "1000", 10);
+    telemetryTimer = setInterval(fetchTelemetryOnce, interval);
+    fetchTelemetryOnce();
+  }
+
+  function stopTelemetry() {
+    if (telemetryTimer !== null) {
+      clearInterval(telemetryTimer);
+      telemetryTimer = null;
+    }
+  }
+
+  async function exportSnapshot() {
+    if (!currentSession) {
+      document.getElementById("export-payload").value = "No active session.";
+      return;
+    }
+    const format = document.getElementById("export-format").value;
+    const url = apiBase() + "/sessions/" +
+      encodeURIComponent(currentSession.session_id) +
+      "/export?format=" + encodeURIComponent(format);
+    try {
+      const res = await fetch(url, { headers: getHeaders() });
+      const body = await res.json();
+      if (!res.ok) {
+        document.getElementById("export-payload").value =
+          "Export failed: " + (body.detail || ("HTTP " + res.status));
+        return;
+      }
+      document.getElementById("export-payload").value = body.payload || "";
+    } catch (err) {
+      console.error("exportSnapshot error", err);
+      document.getElementById("export-payload").value =
+        "Export failed (see console).";
+    }
+  }
+
+  // ------------------------------------------------------------
+  // Agent integration (shared for one-shot + chat)
+  // ------------------------------------------------------------
+
+  function appendChatMessage(role, text) {
+    const win = document.getElementById("chat-window");
+    const wrapper = document.createElement("div");
+    wrapper.className = "chat-message " + (role === "user" ? "user" : "agent");
+
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble";
+
+    const meta = document.createElement("div");
+    meta.className = "chat-meta";
+    meta.textContent = role === "user" ? "You" : "SynQc agent";
+
+    const body = document.createElement("div");
+    body.textContent = text;
+
+    bubble.appendChild(meta);
+    bubble.appendChild(body);
+    wrapper.appendChild(bubble);
+
+    // Remove placeholder if present
+    if (win.firstElementChild && win.firstElementChild.classList && win.firstElementChild.classList.contains("muted")) {
+      win.innerHTML = "";
+    }
+
+    win.appendChild(wrapper);
+    win.scrollTop = win.scrollHeight;
+  }
+
+  function clearChat() {
+    chatHistory = [];
+    const win = document.getElementById("chat-window");
+    win.innerHTML =
+      '<div class="muted">No conversation yet. Start by describing your experiment goals.</div>';
+  }
+
+  function buildChatGoal() {
+    const baseGoal = document.getElementById("agent-goal").value.trim();
+    let text = "";
+    if (baseGoal) {
+      text += "High-level optimization goal from experimenter:\n" + baseGoal + "\n\n";
+    }
+    text += "Conversation so far between experimenter (User) and SynQc agent (Agent):\n";
+    chatHistory.forEach((msg) => {
+      const prefix = msg.role === "user" ? "User: " : "Agent: ";
+      text += prefix + msg.content + "\n";
+    });
+    text += "\nFocus particularly on the latest user message when proposing the next configuration patch.";
+    return text;
+  }
+
+  async function callAgent(goalText) {
+    if (!currentSession) {
+      alert("Create or select a session first.");
+      throw new Error("No active session");
+    }
+    const goal = (goalText || "").trim();
+    if (!goal) {
+      alert("Please provide a goal for the agent.");
+      throw new Error("Empty goal");
+    }
+
+    const tempStr = document.getElementById("agent-temp").value.trim();
+    const modelOverride = document.getElementById("agent-model").value.trim();
+
+    const payload = {
+      goal: goal,
+      model: modelOverride || null,
+      temperature: tempStr ? parseFloat(tempStr) : null,
+    };
+
+    const statusEl = document.getElementById("agent-status");
+    statusEl.textContent = "Querying agent…";
+    document.getElementById("agent-json").textContent = "Waiting for response…";
+    document.getElementById("agent-rationale").textContent = "";
+
+    const url = apiBase() + "/sessions/" +
+      encodeURIComponent(currentSession.session_id) + "/agent/suggest";
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(payload),
+      });
+
+      let body;
+      try {
+        body = await res.json();
+      } catch (jsonErr) {
+        body = {};
+      }
+
+      if (!res.ok) {
+        const msg = body.detail || ("HTTP " + res.status);
+        statusEl.textContent = "Agent error: " + msg;
+        document.getElementById("agent-json").textContent =
+          "Agent error: " + msg;
+        throw new Error("Agent error: " + msg);
+      }
+
+      lastAgentSuggestion = body;
+      statusEl.textContent = "Agent suggestion ready (not applied).";
+
+      document.getElementById("agent-json").textContent =
+        JSON.stringify(body.recommended_config, null, 2);
+
+      const rationale = body.rationale || "";
+      const warnings = body.warnings || [];
+      let text = rationale;
+      if (warnings.length) {
+        text += "\n\nWarnings:\n- " + warnings.join("\n- ");
+      }
+      document.getElementById("agent-rationale").textContent = text;
+
+      return body;
+    } catch (err) {
+      console.error("callAgent error", err);
+      statusEl.textContent = "Agent call failed (see console).";
+      document.getElementById("agent-json").textContent =
+        "Agent call failed (see console).";
+      throw err;
+    }
+  }
+
+  async function askAgent() {
+    const baseGoal = document.getElementById("agent-goal").value.trim();
+    if (!baseGoal) {
+      alert("Please enter a high-level goal for the agent.");
+      return;
+    }
+    try {
+      await callAgent(baseGoal);
+    } catch (err) {
+      // Already reported to UI
+    }
+  }
+
+  async function sendChatMessage() {
+    if (!currentSession) {
+      alert("Create or select a session first.");
+      return;
+    }
+    const input = document.getElementById("chat-input");
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = "";
+    appendChatMessage("user", text);
+    chatHistory.push({ role: "user", content: text });
+
+    const goalText = buildChatGoal();
+    try {
+      const suggestion = await callAgent(goalText);
+      const reply = suggestion && suggestion.rationale
+        ? suggestion.rationale
+        : "[Agent responded without rationale; see configuration patch above.]";
+      appendChatMessage("agent", reply);
+      chatHistory.push({ role: "agent", content: reply });
+    } catch (err) {
+      appendChatMessage("agent", "[Agent call failed; see console logs.]");
+    }
+  }
+
+  async function applyAgentSuggestion() {
+    if (!currentSession) {
+      alert("No active session.");
+      return;
+    }
+    if (!lastAgentSuggestion || !lastAgentSuggestion.recommended_config) {
+      alert("No agent suggestion to apply.");
+      return;
+    }
+
+    const cfg = readConfigFromForm();
+    const patch = lastAgentSuggestion.recommended_config;
+    const merged = Object.assign({}, cfg, patch);
+
+    // Update form, then save session
+    writeConfigToForm(merged);
+    await saveSession();
+
+    document.getElementById("agent-status").textContent =
+      "Suggestion applied and session saved.";
+  }
+
+  // ------------------------------------------------------------
+  // Event wiring
+  // ------------------------------------------------------------
+
+  function init() {
+    document.getElementById("btn-ping").addEventListener("click", pingBackend);
+    document.getElementById("btn-refresh-sessions").addEventListener("click", refreshSessions);
+    document.getElementById("btn-new-session").addEventListener("click", newSession);
+    document.getElementById("btn-save-session").addEventListener("click", saveSession);
+
+    document.getElementById("btn-dry-run").addEventListener("click", () => launchRun("dryrun"));
+    document.getElementById("btn-run").addEventListener("click", () => launchRun("run"));
+    document.getElementById("btn-kill").addEventListener("click", killRun);
+
+    document.getElementById("btn-log-refresh").addEventListener("click", refreshLog);
+    document.getElementById("btn-log-clear").addEventListener("click", clearLog);
+
+    document.getElementById("btn-telemetry-start").addEventListener("click", startTelemetry);
+    document.getElementById("btn-telemetry-stop").addEventListener("click", stopTelemetry);
+
+    document.getElementById("btn-export").addEventListener("click", exportSnapshot);
+
+    document.getElementById("btn-agent-suggest").addEventListener("click", askAgent);
+    document.getElementById("btn-agent-apply").addEventListener("click", applyAgentSuggestion);
+
+    document.getElementById("btn-chat-send").addEventListener("click", sendChatMessage);
+    document.getElementById("btn-chat-clear").addEventListener("click", clearChat);
+
+    const chatInput = document.getElementById("chat-input");
+    chatInput.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" && !ev.shiftKey) {
+        ev.preventDefault();
+        sendChatMessage();
+      }
+    });
+
+    // Initial chat state + backend ping + session refresh
+    clearChat();
+    pingBackend();
+    refreshSessions();
+  }
+
+  window.addEventListener("DOMContentLoaded", init);
+</script>
+
+</body>
+</html>

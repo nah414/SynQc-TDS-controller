@@ -1,0 +1,34 @@
+version: '3.9'
+
+services:
+  synqc-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: synqc-tds-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - SYNQC_HOST=0.0.0.0
+      - SYNQC_PORT=8000
+      - SYNQC_API_PREFIX=/api/v1/synqc
+      - SYNQC_STATE_DIR=/app/synqc_state
+      - SYNQC_ALLOWED_ORIGINS=*
+      - SYNQC_MAX_PROBE_STRENGTH=0.5
+      - SYNQC_MAX_PROBE_DURATION_NS=5000
+      - SYNQC_MAX_SHOTS_PER_RUN=200000
+      # Optional: set OPENAI_API_KEY if agent features are desired
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - synqc-state:/app/synqc_state
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/synqc/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+    restart: unless-stopped
+
+volumes:
+  synqc-state:
+    driver: local

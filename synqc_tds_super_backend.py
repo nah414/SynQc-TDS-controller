@@ -88,6 +88,8 @@ def _get_thread_rng() -> np.random.Generator:
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 # Import the LLM agent (optional; only used if OPENAI_API_KEY is set)
@@ -797,6 +799,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serve optional static assets for the UI at /ui/static/
+# Directory `ui_static` is expected next to this file. It's harmless if empty.
+try:
+    static_dir = Path(__file__).parent / "ui_static"
+    # Ensure the path exists when running in production; if not, StaticFiles will
+    # still mount but return 404 for missing files. Creating the directory is
+    # non-destructive and helps local development.
+    static_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/ui/static", StaticFiles(directory=str(static_dir)), name="ui-static")
+except Exception:
+    # Do not raise on mount failure; the app should still start.
+    pass
+
 store = StateStore(STATE_DIR)
 engine = SynQcEngine()
 agent: Optional[SynQcAgent] = None  # LLM-based advisory agent
@@ -855,6 +870,29 @@ async def _stop_background_flusher() -> None:
         _flusher_task.cancel()
     _flusher_task = None
     _flusher_stop = None
+
+
+# -------------------------------------------------------------------------
+# Serve simple static frontend
+# -------------------------------------------------------------------------
+
+@app.get("/ui")
+def _serve_ui() -> FileResponse:
+    """Serve the bundled control panel HTML for convenience.
+
+    This is a convenience route for local use. In production you may serve
+    static assets separately (CDN / web server). The file is expected to be
+    next to this module: `synqc_control_panel.html`.
+    """
+    try:
+        p = Path(__file__).parent / "synqc_control_panel.html"
+        if not p.exists():
+            raise HTTPException(status_code=404, detail="UI not found")
+        return FileResponse(str(p), media_type="text/html")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to read UI file")
 
 
 # -------------------------------------------------------------------------
