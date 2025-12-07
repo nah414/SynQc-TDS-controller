@@ -71,12 +71,49 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import asyncio
+from threading import local as _thread_local_class
+import threading
 
 import numpy as np
+_thread_local = _thread_local_class()
+
+# Thread-local RNG: each thread gets its own Generator to avoid contention
+def _get_thread_rng() -> np.random.Generator:
+    g = getattr(_thread_local, "rng", None)
+    if g is None:
+        g = np.random.default_rng()
+        _thread_local.rng = g
+    return g
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
+
+# Optional fast JSON serializer: use orjson when available for speed
+try:
+    import orjson
+
+    def _json_dumps(obj: Any, indent: Optional[int] = None) -> bytes:
+        # orjson ignores indent; mimic json by pretty-printing when requested
+        if indent:
+            return json.dumps(obj, indent=indent).encode("utf-8")
+        return orjson.dumps(obj)
+
+    def _json_loads(b: bytes) -> Any:
+        return orjson.loads(b)
+
+    _JSON_USES_ORJSON = True
+except Exception:
+    def _json_dumps(obj: Any, indent: Optional[int] = None) -> bytes:
+        return json.dumps(obj, indent=indent).encode("utf-8")
+
+    def _json_loads(b: bytes) -> Any:
+        if isinstance(b, bytes):
+            b = b.decode("utf-8")
+        return json.loads(b)
+
+    _JSON_USES_ORJSON = False
 
 
 # -------------------------------------------------------------------------
@@ -115,6 +152,10 @@ def _env_int(name: str, default: int, lo: int, hi: int) -> int:
 
 API_PREFIX = _env("SYNQC_API_PREFIX", "/api/v1/synqc").rstrip("/")
 STATE_DIR = Path(_env("SYNQC_STATE_DIR", "./synqc_state")).expanduser().resolve()
+
+# Background flusher configuration
+FLUSH_INTERVAL_SEC = _env_float("SYNQC_SESSION_FLUSH_INTERVAL_SEC", 1.0, 0.1, 60.0)
+ENABLE_BACKGROUND_FLUSH = _env("SYNQC_ENABLE_BACKGROUND_FLUSH", "1") != "0"
 
 ALLOWED_ORIGINS_RAW = _env("SYNQC_ALLOWED_ORIGINS", "*")
 ALLOWED_ORIGINS = [o.strip() for o in ALLOWED_ORIGINS_RAW.split(",") if o.strip()] or ["*"]
@@ -376,6 +417,7 @@ class SynQcEngine:
         created_at = datetime.utcnow()
         cfg = session.config
 
+        # run simulation — CPU work; caller may choose to run this in a thread
         kpis = self._simulate_kpis(
             cfg,
             session,
@@ -517,8 +559,9 @@ class SynQcEngine:
             latency += 1.0
 
         # Noise via effective SNR
-        rng = np.random.default_rng()
-        snr_jitter_db = rng.normal(loc=0.0, scale=self.cfg.random_snr_db)
+        # Use a thread-local RNG to avoid constructing a new Generator each call
+        rng = _get_thread_rng()
+        snr_jitter_db = float(rng.normal(loc=0.0, scale=self.cfg.random_snr_db))
         snr_factor = math.exp(snr_jitter_db / 20.0)  # approximate
 
         fid *= min(1.02, max(0.95, snr_factor))
@@ -637,6 +680,8 @@ class StateStore:
         self.root.mkdir(parents=True, exist_ok=True)
         (self.root / "runs").mkdir(parents=True, exist_ok=True)
         self.sessions: Dict[str, SessionState] = {}
+        # IO lock to serialize file writes/reads and avoid concurrent renames
+        self._io_lock = threading.Lock()
         self._load_sessions()
 
     def _sessions_path(self) -> Path:
@@ -648,13 +693,16 @@ class StateStore:
             self.sessions = {}
             return
         try:
-            raw = json.loads(path.read_text(encoding="utf-8"))
+            with self._io_lock:
+                raw_bytes = path.read_bytes()
+            raw = _json_loads(raw_bytes)
             if not isinstance(raw, list):
                 self.sessions = {}
                 return
             loaded: Dict[str, SessionState] = {}
             for item in raw:
                 try:
+                    # item is expected to be a dict serialized from model_dump()
                     st = SessionState.model_validate(item)
                     loaded[st.session_id] = st
                 except Exception:
@@ -665,25 +713,29 @@ class StateStore:
             self.sessions = {}
 
     def _save_sessions(self) -> None:
-        data = [s.model_dump(mode="json") for s in self.sessions.values()]
+        # Use dicts from model_dump() and write bytes via preferred JSON backend
+        data = [s.model_dump() for s in self.sessions.values()]
         tmp_path = self._sessions_path().with_suffix(".tmp")
-        tmp_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        tmp_path.replace(self._sessions_path())
+        with self._io_lock:
+            tmp_path.write_bytes(_json_dumps(data, indent=2))
+            tmp_path.replace(self._sessions_path())
 
     def _run_path(self, run_id: str) -> Path:
         return self.root / "runs" / f"{run_id}.json"
 
     def save_run(self, run: RunRecord) -> None:
         path = self._run_path(run.run_id)
-        path.write_text(
-            json.dumps(run.model_dump(mode="json"), indent=2), encoding="utf-8"
-        )
+        # Persist run record using fast JSON path
+        with self._io_lock:
+            path.write_bytes(_json_dumps(run.model_dump(), indent=2))
 
     def load_run(self, run_id: str) -> RunRecord:
         path = self._run_path(run_id)
         if not path.exists():
             raise FileNotFoundError(run_id)
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        with self._io_lock:
+            raw_bytes = path.read_bytes()
+        raw = _json_loads(raw_bytes)
         return RunRecord.model_validate(raw)
 
     def get_session(self, session_id: str) -> Optional[SessionState]:
@@ -691,11 +743,24 @@ class StateStore:
 
     def upsert_session(self, session: SessionState) -> SessionState:
         self.sessions[session.session_id] = session
+        # By default, persist to disk. Callers that are high-frequency (e.g.
+        # telemetry polling) may set `persist=False` by calling directly and
+        # then not calling _save_sessions; to keep the surface simple we keep
+        # this method as the canonical in-memory updater and allow callers to
+        # call _save_sessions() separately when needed.
         self._save_sessions()
         return session
 
     def all_sessions(self) -> List[SessionState]:
         return list(self.sessions.values())
+
+    def update_in_memory(self, session: SessionState) -> None:
+        """Update the in-memory session without forcing a disk write.
+
+        Use this for high-frequency operations (e.g. telemetry polling)
+        to avoid excessive disk I/O.
+        """
+        self.sessions[session.session_id] = session
 
 
 # -------------------------------------------------------------------------
@@ -727,6 +792,53 @@ app.add_middleware(
 
 store = StateStore(STATE_DIR)
 engine = SynQcEngine()
+_flusher_task: Optional[asyncio.Task] = None
+_flusher_stop: Optional[asyncio.Event] = None
+
+
+async def _session_flusher_loop(stop_event: asyncio.Event, interval: float) -> None:
+    """Periodically flush in-memory sessions to disk.
+
+    Runs _save_sessions in a thread to avoid blocking the event loop.
+    """
+    try:
+        while not stop_event.is_set():
+            await asyncio.sleep(interval)
+            # run the blocking save in a thread
+            try:
+                await asyncio.to_thread(store._save_sessions)
+            except Exception:
+                # flusher must be resilient; log in-memory and continue
+                # Can't call st.add_log here without a session; rely on file system
+                continue
+    except asyncio.CancelledError:
+        return
+
+
+@app.on_event("startup")
+async def _start_background_flusher() -> None:
+    global _flusher_task, _flusher_stop
+    if not ENABLE_BACKGROUND_FLUSH:
+        return
+    if _flusher_task is not None:
+        return
+    _flusher_stop = asyncio.Event()
+    _flusher_task = asyncio.create_task(_session_flusher_loop(_flusher_stop, FLUSH_INTERVAL_SEC))
+
+
+@app.on_event("shutdown")
+async def _stop_background_flusher() -> None:
+    global _flusher_task, _flusher_stop
+    if _flusher_task is None:
+        return
+    # signal stop and wait for the task to finish
+    _flusher_stop.set()
+    try:
+        await asyncio.wait_for(_flusher_task, timeout=5.0)
+    except Exception:
+        _flusher_task.cancel()
+    _flusher_task = None
+    _flusher_stop = None
 
 
 # -------------------------------------------------------------------------
@@ -926,7 +1038,7 @@ def clear_logs(session_id: str) -> Dict[str, Any]:
 
 
 @app.post(f"{API_PREFIX}/sessions/{{session_id}}/run", response_model=RunResponse)
-def launch_run(session_id: str, req: RunRequest) -> RunResponse:
+async def launch_run(session_id: str, req: RunRequest) -> RunResponse:
     """
     Launch a SynQc run or dry-run for the given session.
 
@@ -970,26 +1082,29 @@ def launch_run(session_id: str, req: RunRequest) -> RunResponse:
     st.status_text = "Running · SynQc DPD sequence in progress"
     st.last_updated_at = datetime.utcnow()
     st.add_log(f"Run requested with mode={req.mode.value}.")
-    store.upsert_session(st)
+    # persist the state quickly before heavy compute; write in thread
+    await asyncio.to_thread(store._save_sessions)
 
     try:
-        run = engine.run(st, mode=req.mode, num_iterations=req.num_iterations)
+        # Run the CPU-bound simulation in a thread to avoid blocking the event loop
+        run = await asyncio.to_thread(engine.run, st, req.mode, num_iterations=req.num_iterations)
     except ValueError as exc:
         # Domain (safety) errors become 400 for the client
         st.status = SessionStatus.ERROR
         st.status_text = f"Run aborted: {exc}"
         st.add_log(f"Run aborted: {exc}")
-        store.upsert_session(st)
+        await asyncio.to_thread(store._save_sessions)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # defensive catch-all
         st.status = SessionStatus.ERROR
         st.status_text = "Error during run."
         st.add_log(f"Run failed with error: {exc}")
-        store.upsert_session(st)
+        await asyncio.to_thread(store._save_sessions)
         raise HTTPException(status_code=500, detail="Internal SynQc error.") from exc
 
-    store.save_run(run)
-    store.upsert_session(st)
+    # Persist run and final session state without blocking the loop
+    await asyncio.to_thread(store.save_run, run)
+    await asyncio.to_thread(store._save_sessions)
     return RunResponse(run=run, session=SessionSummary.from_state(st))
 
 
@@ -1058,7 +1173,9 @@ def get_telemetry(
 
     now = datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
 
-    rng = np.random.default_rng()
+    # Use a thread-local RNG to avoid allocating per-call and to avoid
+    # cross-thread contention.
+    rng = _get_thread_rng()
     fid_jitter = float(rng.normal(0.0, 0.0005))
     lat_jitter = float(rng.normal(0.0, 1.5))
 
@@ -1071,10 +1188,11 @@ def get_telemetry(
         "shot_rate": None,  # could be filled from real hardware timing
     }
 
+    # Update telemetry in-memory only — avoid heavy disk writes on frequent polls
     st.telemetry.append(row)
     if len(st.telemetry) > 512:
         st.telemetry = st.telemetry[-512:]
-    store.upsert_session(st)
+    store.update_in_memory(st)
 
     rows = st.telemetry[-limit:]
     return {"session_id": session_id, "rows": rows}

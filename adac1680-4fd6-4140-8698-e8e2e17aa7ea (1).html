@@ -94,6 +94,23 @@
       position: sticky;
       top: 0;
       z-index: 20;
+      position: relative;
+    }
+
+    .attribution {
+      position: absolute;
+      top: 0.75rem;
+      right: 1.75rem;
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--accent-strong);
+      text-transform: uppercase;
+      font-style: italic;
+      text-shadow: 0 0 12px rgba(255, 221, 110, 0.3);
+      font-family: Georgia, serif;
+      text-decoration: underline dashed var(--accent-strong);
+      text-decoration-skip-ink: auto;
     }
 
     .logo-block {
@@ -704,6 +721,7 @@
 </head>
 <body>
   <header class="app-header">
+    <div class="attribution">Developed by <strong>eVision Enterprises</strong></div>
     <div class="logo-block">
       <div class="logo-dot"></div>
       <div>
