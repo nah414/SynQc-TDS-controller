@@ -1,1176 +1,154 @@
-<!DOCTYPE html>
+
+     <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>SynQc Temporal Dynamics Series — Control Panel v0.2</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SynQc TDS — Interstellar Control Console</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
-      --bg: #050812;
-      --bg-alt: #0c1020;
-      --panel: #111729;
-      --accent: #4da3ff;
-      --accent-soft: rgba(77, 163, 255, 0.12);
-      --accent-strong: rgba(77, 163, 255, 0.3);
-      --danger: #ff4d6a;
-      --text: #f5f7ff;
-      --muted: #9aa4c3;
-      --border: #1d2437;
+      --bg-main: #020318;
+      --bg-panel: #090b1c;
+      --bg-panel-alt: #0f1224;
+      --accent: #53a8ff;
+      --accent-soft: rgba(83, 168, 255, 0.16);
+      --accent-strong: #ffdd6e;
+      --danger: #ff5468;
+      --border-subtle: #262a3f;
+      --text-main: #f7f8ff;
+      --text-muted: #a4a7c7;
+      --text-soft: #7a7da0;
       --radius-lg: 16px;
-      --radius-md: 10px;
-      --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.55);
+      --radius-md: 11px;
+      --radius-pill: 999px;
+      --shadow-soft: 0 22px 60px rgba(0, 0, 0, 0.7);
+      --shadow-subtle: 0 0 0 1px rgba(255, 255, 255, 0.03);
     }
 
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
     }
 
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-        "SF Pro Text", "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #111729 0, #050812 55%);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      align-items: stretch;
-      justify-content: center;
-      padding: 16px;
-    }
-
-    .app-shell {
-      width: 100%;
-      max-width: 1200px;
-      background: linear-gradient(135deg, #050812 0, #050812 40%, #090f1f 100%);
-      border-radius: 24px;
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-soft);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    header {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      background: radial-gradient(circle at left, #111729 0, #050812 60%);
-    }
-
-    .brand-block {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .logo-orb {
-      width: 32px;
-      height: 32px;
-      border-radius: 999px;
-      background: conic-gradient(
-        from 210deg,
-        #4da3ff,
-        #7b5cff,
-        #4da3ff,
-        #00e0ff,
-        #4da3ff
-      );
-      box-shadow: 0 0 20px rgba(77, 163, 255, 0.9);
-    }
-
-    .brand-text h1 {
-      font-size: 18px;
-      letter-spacing: 0.03em;
-    }
-
-    .brand-text span {
-      display: block;
-      font-size: 11px;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    .header-meta {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .tag {
-      font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--accent-strong);
-      background: var(--accent-soft);
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      white-space: nowrap;
-    }
-
-    .tag-secondary {
-      border-color: var(--border);
-      background: rgba(255, 255, 255, 0.02);
-      color: var(--muted);
-    }
-
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
-      min-height: 0;
-      flex: 1;
-    }
-
-    aside {
-      border-right: 1px solid var(--border);
-      background: var(--bg-alt);
-      padding: 16px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    main {
-      padding: 16px 18px 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    h2.section-title {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.13em;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .sidebar-card {
-      background: rgba(5, 8, 18, 0.9);
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border);
-      padding: 10px 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .sidebar-card h3 {
-      font-size: 13px;
-      color: var(--text);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .badge-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 10px rgba(77, 163, 255, 0.9);
-    }
-
-    .field-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    label {
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    select,
-    input,
-    textarea {
-      width: 100%;
-      background: #050812;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      padding: 6px 10px;
-      font-size: 12px;
-      color: var(--text);
-      outline: none;
-    }
-
-    textarea {
-      min-height: 70px;
-      border-radius: 12px;
-      resize: vertical;
-    }
-
-    select:focus,
-    input:focus,
-    textarea:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(77, 163, 255, 0.3);
-    }
-
-    .preset-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .preset-btn {
-      width: 100%;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: #050812;
-      padding: 6px 10px;
-      font-size: 11px;
-      color: var(--muted);
-      text-align: left;
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .preset-btn span {
-      font-size: 11px;
-    }
-
-    .preset-btn strong {
-      color: var(--text);
-      font-weight: 500;
-      margin-right: 4px;
-    }
-
-    .preset-btn.active,
-    .preset-btn:hover {
-      border-color: var(--accent);
-      background: linear-gradient(90deg, #050812, rgba(77, 163, 255, 0.1));
-      color: var(--text);
-    }
-
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .kpi-card {
-      background: var(--panel);
-      border-radius: var(--radius-md);
-      border: 1px solid var(--border);
-      padding: 10px 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .kpi-label {
-      font-size: 11px;
-      color: var(--muted);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .kpi-value {
-      font-size: 18px;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .kpi-chip {
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: var(--muted);
-    }
-
-    .kpi-trend {
-      font-size: 11px;
-      color: #7de38c;
-    }
-
-    .kpi-trend.bad {
-      color: var(--danger);
-    }
-
-    .tabs {
-      display: flex;
-      gap: 8px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 6px;
-    }
-
-    .tab-btn {
-      font-size: 12px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--muted);
-      cursor: pointer;
-    }
-
-    .tab-btn.active {
-      border-color: var(--accent);
-      background: var(--accent-soft);
-      color: var(--accent);
-    }
-
-    .tab-panel {
-      display: none;
-      padding-top: 8px;
-    }
-
-    .tab-panel.active {
-      display: block;
-    }
-
-    .panel-card {
-      background: var(--panel);
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border);
-      padding: 12px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .panel-header h3 {
-      font-size: 13px;
-    }
-
-    .panel-header p {
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    .chip-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .chip {
-      font-size: 10px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      background: rgba(0, 0, 0, 0.2);
-      white-space: nowrap;
-    }
-
-    .chip.accent {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: var(--accent-soft);
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .form-grid.wide {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .button-row {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      padding: 7px 12px;
-      font-size: 12px;
-      cursor: pointer;
-      background: rgba(5, 8, 18, 0.9);
-      color: var(--muted);
-    }
-
-    .btn-primary {
-      border-color: var(--accent);
-      background: linear-gradient(90deg, #4da3ff, #7b5cff);
-      color: #050812;
-      font-weight: 500;
-    }
-
-    .btn-danger {
-      border-color: var(--danger);
-      background: transparent;
-      color: var(--danger);
-    }
-
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: default;
-    }
-
-    .log-view {
-      background: #050812;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      padding: 8px 10px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-        "Liberation Mono", "Courier New", monospace;
-      font-size: 11px;
-      max-height: 160px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-    }
-
-    .status-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    .status-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .status-led {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: #555a7c;
-    }
-
-    .status-led.live {
-      background: #33dd88;
-      box-shadow: 0 0 10px rgba(51, 221, 136, 0.9);
-    }
-
-    @media (max-width: 880px) {
-      .layout {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
-      aside {
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-      }
-
-      .kpi-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .form-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
-    @media (max-width: 600px) {
-      .kpi-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
-      .form-grid,
-      .form-grid.wide {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="app-shell">
-    <header>
-      <div class="brand-block">
-        <div class="logo-orb" aria-hidden="true"></div>
-        <div class="brand-text">
-          <h1>SynQc Temporal Dynamics Series</h1>
-          <span>Drive–Probe–Drive · Live Control Shell v0.2</span>
-        </div>
-      </div>
-      <div class="header-meta">
-        <div class="tag">SynQc · DPD Engine</div>
-        <div class="tag tag-secondary" id="session-mode-tag">
-          Session Mode: Local Simulation
-        </div>
-        <div class="tag tag-secondary" id="session-id-tag">
-          Session ID: —
-        </div>
-      </div>
-    </header>
-
-    <div class="layout">
-      <!-- SIDEBAR -->
-      <aside>
-        <section>
-          <h2 class="section-title">Session</h2>
-          <div class="sidebar-card">
-            <h3>
-              Hardware Stack
-              <span class="badge-dot" id="hardware-led"></span>
-            </h3>
-            <div class="field-group">
-              <label for="hardware-target">Target Provider</label>
-              <select id="hardware-target">
-                <option value="sim-local">Local Simulator (CPU)</option>
-                <option value="ibm-qpu">IBM Quantum QPU</option>
-                <option value="aws-braket">AWS Braket QPU</option>
-                <option value="ionq">IonQ Native</option>
-                <option value="classical-only">
-                  Classical Hardware Only (FPGA/DAQ)
-                </option>
-              </select>
-            </div>
-            <div class="field-group">
-              <label for="hardware-preset">Hardware Profile</label>
-              <select id="hardware-preset">
-                <option value="transmon-default">
-                  Transmon Default · 5–27q
-                </option>
-                <option value="fluxonium-pilot">
-                  Fluxonium Pilot · 2–5q
-                </option>
-                <option value="ion-chain">
-                  Trapped-Ion Chain · 11–32q
-                </option>
-                <option value="neutral-atom">
-                  Neutral Atom Array · 100+ sites
-                </option>
-              </select>
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <h2 class="section-title">Templates</h2>
-          <div class="sidebar-card">
-            <h3>SynQc Presets</h3>
-            <div class="preset-list">
-              <button class="preset-btn" data-preset="calibration">
-                <span><strong>Calibration</strong> · RB + T₁/T₂ sweep</span>
-                <span>DPD-Cal</span>
-              </button>
-              <button class="preset-btn" data-preset="hamiltonian">
-                <span><strong>Hamiltonian Scan</strong> · drive map</span>
-                <span>DPD-H</span>
-              </button>
-              <button class="preset-btn" data-preset="stability">
-                <span><strong>Stability</strong> · slow drift watch</span>
-                <span>DPD-S</span>
-              </button>
-              <button class="preset-btn" data-preset="realtime">
-                <span><strong>Real-time Control</strong> · live feedback</span>
-                <span>DPD-RT</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <h2 class="section-title">Notes</h2>
-          <div class="sidebar-card">
-            <div class="field-group">
-              <label for="session-notes">Run Annotation</label>
-              <textarea
-                id="session-notes"
-                placeholder="e.g. Transmon, 5q, flux-bias sweet spot, 4K, SynQc v0.2 test."
-              ></textarea>
-            </div>
-          </div>
-        </section>
-      </aside>
-
-      <!-- MAIN -->
-      <main>
-        <section>
-          <h2 class="section-title">Live KPIs</h2>
-          <div class="kpi-grid">
-            <article class="kpi-card">
-              <div class="kpi-label">
-                <span>DPD Fidelity</span>
-                <span class="kpi-chip">target ≥ 0.975</span>
-              </div>
-              <div class="kpi-value" id="kpi-fidelity">0.942</div>
-              <div class="kpi-trend" id="kpi-fidelity-trend">
-                +0.003 vs last run
-              </div>
-            </article>
-            <article class="kpi-card">
-              <div class="kpi-label">
-                <span>Latency (DPD Loop)</span>
-                <span class="kpi-chip">µs end-to-end</span>
-              </div>
-              <div class="kpi-value" id="kpi-latency">37.4</div>
-              <div class="kpi-trend bad" id="kpi-latency-trend">
-                +2.1µs vs baseline
-              </div>
-            </article>
-            <article class="kpi-card">
-              <div class="kpi-label">
-                <span>Probe Back-Action</span>
-                <span class="kpi-chip">info vs damage</span>
-              </div>
-              <div class="kpi-value" id="kpi-backaction">0.18</div>
-              <div class="kpi-trend" id="kpi-backaction-trend">
-                ↓ acceptable
-              </div>
-            </article>
-            <article class="kpi-card">
-              <div class="kpi-label">
-                <span>Shot Budget</span>
-                <span class="kpi-chip">used / limit</span>
-              </div>
-              <div class="kpi-value" id="kpi-shots">12.4k / 50k</div>
-              <div class="kpi-trend" id="kpi-shots-trend">
-                24.8% consumed
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section>
-          <div class="tabs" role="tablist">
-            <button
-              class="tab-btn active"
-              data-tab="configure"
-              type="button"
-              role="tab"
-              aria-selected="true"
-            >
-              Configure Run
-            </button>
-            <button
-              class="tab-btn"
-              data-tab="logs"
-              type="button"
-              role="tab"
-              aria-selected="false"
-            >
-              Logs & Events
-            </button>
-            <button
-              class="tab-btn"
-              data-tab="metrics"
-              type="button"
-              role="tab"
-              aria-selected="false"
-            >
-              Metrics & Export
-            </button>
-          </div>
-
-          <!-- CONFIGURE TAB -->
-          <div
-            class="tab-panel active"
-            id="tab-configure"
-            role="tabpanel"
-          >
-            <div class="panel-card">
-              <div class="panel-header">
-                <div>
-                  <h3>Drive–Probe–Drive Configuration</h3>
-                  <p>
-                    Define pulse envelopes, probe window, and adaptive rules
-                    before dispatching to your hardware backend.
-                  </p>
-                </div>
-                <div class="chip-row">
-                  <div class="chip accent">scheduler</div>
-                  <div class="chip accent">probes</div>
-                  <div class="chip">demod</div>
-                  <div class="chip">adapt</div>
-                </div>
-              </div>
-
-              <div class="form-grid">
-                <div class="field-group">
-                  <label for="drive-envelope">Drive Envelope</label>
-                  <select id="drive-envelope">
-                    <option value="gaussian">Gaussian</option>
-                    <option value="square">Square</option>
-                    <option value="drag">DRAG</option>
-                    <option value="cosine">Cosine-Flat</option>
-                  </select>
-                </div>
-                <div class="field-group">
-                  <label for="probe-strength">Probe Strength (ε)</label>
-                  <input
-                    id="probe-strength"
-                    type="number"
-                    min="0.0"
-                    max="1.0"
-                    step="0.01"
-                    value="0.20"
-                  />
-                </div>
-                <div class="field-group">
-                  <label for="probe-duration">Probe Duration (τₚ, ns)</label>
-                  <input
-                    id="probe-duration"
-                    type="number"
-                    min="5"
-                    max="5000"
-                    step="5"
-                    value="120"
-                  />
-                </div>
-              </div>
-
-              <div class="form-grid wide">
-                <div class="field-group">
-                  <label for="adaptive-rule">Adaptive Rule</label>
-                  <select id="adaptive-rule">
-                    <option value="none">None (fixed sequence)</option>
-                    <option value="kalman">
-                      Kalman update · H estimate
-                    </option>
-                    <option value="bayes">
-                      Bayesian branching · probe schedule
-                    </option>
-                    <option value="rl">
-                      RL controller · multi-step objective
-                    </option>
-                  </select>
-                </div>
-                <div class="field-group">
-                  <label for="objective">Objective</label>
-                  <select id="objective">
-                    <option value="maximize-fidelity">
-                      Maximize DPD fidelity
-                    </option>
-                    <option value="minimize-latency">
-                      Minimize loop latency
-                    </option>
-                    <option value="info-vs-damage">
-                      Info gain vs back-action
-                    </option>
-                    <option value="stability-window">
-                      Stability window over time
-                    </option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="button-row">
-                <button class="btn btn-danger" id="btn-kill">
-                  Kill Switch
-                </button>
-                <button class="btn" id="btn-dryrun">
-                  Dry-Run (no hardware)
-                </button>
-                <button class="btn btn-primary" id="btn-launch">
-                  Launch SynQc Run
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- LOGS TAB -->
-          <div class="tab-panel" id="tab-logs" role="tabpanel">
-            <div class="panel-card">
-              <div class="panel-header">
-                <div>
-                  <h3>Run Log & Events</h3>
-                  <p>Streaming diagnostics from scheduler, probes, and backend.</p>
-                </div>
-                <div class="chip-row">
-                  <div class="chip accent">events</div>
-                  <div class="chip">warnings</div>
-                  <div class="chip">timing</div>
-                </div>
-              </div>
-              <div class="log-view" id="log-view"></div>
-              <div class="status-bar">
-                <div class="status-left">
-                  <span class="status-led" id="status-led"></span>
-                  <span id="status-text">Idle · no active run</span>
-                </div>
-                <button class="btn" id="btn-clear-log">Clear Log</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- METRICS TAB -->
-          <div class="tab-panel" id="tab-metrics" role="tabpanel">
-            <div class="panel-card">
-              <div class="panel-header">
-                <div>
-                  <h3>Metrics & Export</h3>
-                  <p>
-                    Snapshot the current KPIs and export them to your SynQc
-                    data system for later analysis.
-                  </p>
-                </div>
-                <div class="chip-row">
-                  <div class="chip accent">json</div>
-                  <div class="chip">csv</div>
-                  <div class="chip">notebook</div>
-                </div>
-              </div>
-              <div class="field-group">
-                <label for="export-format">Export Format</label>
-                <select id="export-format">
-                  <option value="json">JSON (API / data lake)</option>
-                  <option value="csv">CSV (quick look)</option>
-                  <option value="notebook">
-                    Notebook cell payload (Jupyter)
-                  </option>
-                </select>
-              </div>
-              <div class="button-row">
-                <button class="btn btn-primary" id="btn-export">
-                  Export Snapshot
-                </button>
-              </div>
-              <div class="log-view" id="export-preview"></div>
-            </div>
-          </div>
-        </section>
-      </main>
-    </div>
-  </div>
-
-  <script>
-    // --- tiny util ---
-    function $(id) {
-      return document.getElementById(id);
-    }
-
-    // Tabs
-    document.querySelectorAll(".tab-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const tab = btn.dataset.tab;
-
-        document
-          .querySelectorAll(".tab-btn")
-          .forEach((b) => b.classList.remove("active"));
-        document
-          .querySelectorAll(".tab-panel")
-          .forEach((p) => p.classList.remove("active"));
-
-        btn.classList.add("active");
-        document.getElementById("tab-" + tab).classList.add("active");
-      });
-    });
-
-    // Presets
-    const presetButtons = document.querySelectorAll(".preset-btn");
-    presetButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        presetButtons.forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        applyPreset(btn.dataset.preset);
-      });
-    });
-
-    function applyPreset(name) {
-      // NOTE: This is where you map presets → real backend configs.
-      if (name === "calibration") {
-        $("drive-envelope").value = "gaussian";
-        $("probe-strength").value = 0.15;
-        $("probe-duration").value = 80;
-        $("adaptive-rule").value = "none";
-        $("objective").value = "maximize-fidelity";
-        appendLog("Preset 'Calibration' applied.");
-      } else if (name === "hamiltonian") {
-        $("drive-envelope").value = "cosine";
-        $("probe-strength").value = 0.25;
-        $("probe-duration").value = 140;
-        $("adaptive-rule").value = "kalman";
-        $("objective").value = "info-vs-damage";
-        appendLog("Preset 'Hamiltonian Scan' applied.");
-      } else if (name === "stability") {
-        $("drive-envelope").value = "square";
-        $("probe-strength").value = 0.10;
-        $("probe-duration").value = 200;
-        $("adaptive-rule").value = "bayes";
-        $("objective").value = "stability-window";
-        appendLog("Preset 'Stability' applied.");
-      } else if (name === "realtime") {
-        $("drive-envelope").value = "drag";
-        $("probe-strength").value = 0.30;
-        $("probe-duration").value = 60;
-        $("adaptive-rule").value = "rl";
-        $("objective").value = "minimize-latency";
-        appendLog("Preset 'Real-time Control' applied.");
-      }
-    }
-
-    // Hardware indicators
-    $("hardware-target").addEventListener("change", () => {
-      const target = $("hardware-target").value;
-      const led = $("hardware-led");
-      const tag = $("session-mode-tag");
-
-      if (target === "sim-local") {
-        led.style.background = "#33dd88";
-        tag.textContent = "Session Mode: Local Simulation";
-      } else if (target === "classical-only") {
-        led.style.background = "#ffb84d";
-        tag.textContent = "Session Mode: Classical Hardware";
-      } else {
-        led.style.background = "#4da3ff";
-        tag.textContent = "Session Mode: Quantum Backend";
-      }
-
-      appendLog("Hardware target set to: " + target + ".");
-    });
-
-    // Basic log system (front-end only; you wire this to backend later)
-    const logView = $("log-view");
-    function appendLog(msg) {
-      const now = new Date().toISOString();
-      logView.textContent += "[" + now + "] " + msg + "
-";
-      logView.scrollTop = logView.scrollHeight;
-    }
-
-    $("btn-clear-log").addEventListener("click", () => {
-      logView.textContent = "";
-    });
-
-    // Run control
-    let runActive = false;
-    let fakeKpiInterval = null;
-
-    $("btn-launch").addEventListener("click", () => {
-      if (runActive) return;
-
-      runActive = true;
-      $("status-led").classList.add("live");
-      $("status-text").textContent = "Running · SynQc DPD sequence in progress";
-      appendLog("SynQc run launched with current configuration.");
-
-      // mock KPIs so UI feels alive; replace with backend streaming later
-      fakeKpiInterval = setInterval(updateFakeKpis, 2200);
-    });
-
-    $("btn-dryrun").addEventListener("click", () => {
-      appendLog(
-        "Dry-run requested. SynQc would build schedule but skip hardware dispatch."
-      );
-      $("status-text").textContent = "Dry-run complete · no hardware touched";
-    });
-
-    $("btn-kill").addEventListener("click", () => {
-      if (!runActive) {
-        appendLog("Kill switch pressed with no active run.");
-        return;
-      }
-      runActive = false;
-      $("status-led").classList.remove("live");
-      $("status-text").textContent = "Idle · last run terminated via kill switch";
-      appendLog("Kill switch activated. Run terminated safely.");
-
-      if (fakeKpiInterval) {
-        clearInterval(fakeKpiInterval);
-        fakeKpiInterval = null;
-      }
-    });
-
-    function updateFakeKpis() {
-      function jitter(value, scale, min, max) {
-        const delta = (Math.random() - 0.5) * scale;
-        let v = value + delta;
-        if (min !== undefined) v = Math.max(min, v);
-        if (max !== undefined) v = Math.min(max, v);
-        return v;
-      }
-
-      let fidelity = parseFloat($("kpi-fidelity").textContent);
-      let latency = parseFloat($("kpi-latency").textContent);
-      let backaction = parseFloat($("kpi-backaction").textContent);
-
-      const newFid = jitter(fidelity || 0.94, 0.004, 0.9, 0.995);
-      const newLat = jitter(latency || 38, 3.0, 10, 120);
-      const newBack = jitter(backaction || 0.18, 0.03, 0.05, 0.4);
-
-      $("kpi-fidelity-trend").textContent =
-        (newFid - fidelity >= 0 ? "+" : "") +
-        (newFid - fidelity).toFixed(3) +
-        " vs last";
-      $("kpi-latency-trend").textContent =
-        (newLat - latency >= 0 ? "+" : "") +
-        (newLat - latency).toFixed(1) +
-        "µs vs last";
-      $("kpi-backaction-trend").textContent =
-        (newBack - backaction >= 0 ? "↑" : "↓") + " back-action";
-
-      $("kpi-fidelity").textContent = newFid.toFixed(3);
-      $("kpi-latency").textContent = newLat.toFixed(1);
-      $("kpi-backaction").textContent = newBack.toFixed(2);
-
-      const usedPercent = Math.min(
-        99.9,
-        parseFloat($("kpi-shots-trend").textContent) + Math.random() * 3
-      );
-      $("kpi-shots").textContent = (usedPercent * 0.5).toFixed(1) + "k / 50k";
-      $("kpi-shots-trend").textContent = usedPercent.toFixed(1) + "% consumed";
-    }
-
-    // Export snapshot (front-end only placeholder)
-    $("btn-export").addEventListener("click", () => {
-      const fmt = $("export-format").value;
-      const payload = buildExportPayload(fmt);
-      $("export-preview").textContent = payload;
-      appendLog("Export snapshot generated (" + fmt + ").");
-    });
-
-    function buildExportPayload(fmt) {
-      const data = {
-        sessionId: $("session-id-tag").textContent.replace("Session ID: ", ""),
-        mode: $("session-mode-tag").textContent.replace("Session Mode: ", ""),
-        hardwareTarget: $("hardware-target").value,
-        hardwarePreset: $("hardware-preset").value,
-        driveEnvelope: $("drive-envelope").value,
-        probeStrength: parseFloat($("probe-strength").value),
-        probeDurationNs: parseFloat($("probe-duration").value),
-        adaptiveRule: $("adaptive-rule").value,
-        objective: $("objective").value,
-        kpis: {
-          fidelity: parseFloat($("kpi-fidelity").textContent),
-          latencyUs: parseFloat($("kpi-latency").textContent),
-          backAction: parseFloat($("kpi-backaction").textContent),
-          shotUsage: $("kpi-shots").textContent,
-        },
-        notes: $("session-notes").value || null,
-        exportedAt: new Date().toISOString(),
-      };
-
-      if (fmt === "csv") {
-        const keys = Object.keys(data);
-        const flat = {
-          ...data,
-          kpi_fidelity: data.kpis.fidelity,
-          kpi_latencyUs: data.kpis.latencyUs,
-          kpi_backAction: data.kpis.backAction,
-          kpi_shotUsage: data.kpis.shotUsage,
-        };
-        delete flat.kpis;
-        const header = Object.keys(flat).join(",");
-        const row = Object.values(flat)
-          .map((v) =>
-            typeof v === "string"
-              ? '"' + v.replace(/"/g, '""') + '"'
-              : String(v)
-          )
-          .join(",");
-        return header + "
-" + row + "
-";
-      }
-
-      if (fmt === "notebook") {
-        return (
-          "# SynQc TDS snapshot
-" +
-          "snapshot = " +
-          JSON.stringify(data, null, 2) +
-          "
-
-" +
-          "# Use `snapshot` inside your Jupyter pipeline."
-        );
-      }
-
-      // default JSON
-      return JSON.stringify(data, null, 2);
-    }
-
-    // Generate simple session ID on load
-    (function initSession() {
-      const id = "synqc-" + Math.random().toString(36).slice(2, 8);
-      $("session-id-tag").textContent = "Session ID: " + id;
-      appendLog("Session initialized with ID " + id + ".");
-    })();
-  </script>
-</body>
-</html>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>SynQc TDS · Control Panel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root {
-      --bg-main: #050711;
-      --bg-panel: #101320;
-      --bg-panel-alt: #15192a;
-      --accent: #4f9cff;
-      --accent-soft: rgba(79, 156, 255, 0.15);
-      --accent-strong: #ffcc4f;
-      --danger: #ff5468;
-      --border-subtle: #24283b;
-      --text-main: #f5f5f7;
-      --text-muted: #a4a7bd;
-      --text-soft: #777a90;
-      --radius-lg: 14px;
-      --radius-md: 10px;
-      --radius-pill: 999px;
-      --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.45);
-      --shadow-subtle: 0 0 0 1px rgba(255, 255, 255, 0.02);
-    }
-    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #15193a 0, #050711 52%, #02030a 100%);
+      background:
+        radial-gradient(circle at 20% -10%, #2e3c7f 0, transparent 55%),
+        radial-gradient(circle at 80% 10%, #5a2f7e 0, transparent 55%),
+        radial-gradient(circle at 10% 90%, #224c6f 0, transparent 55%),
+        radial-gradient(circle at 90% 80%, #5f2f5f 0, transparent 55%),
+        #020318;
       color: var(--text-main);
       -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
     }
-    h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: 0.02em; }
-    p { margin: 0; }
+
+    /* starfield overlay */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.65), transparent),
+        radial-gradient(1px 1px at 30% 80%, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 70% 10%, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 90% 70%, rgba(255,255,255,0.6), transparent),
+        radial-gradient(circle at 20% 30%, rgba(111, 179, 255, 0.25), transparent 55%),
+        radial-gradient(circle at 80% 70%, rgba(255, 182, 132, 0.25), transparent 55%);
+      opacity: 0.42;
+      mix-blend-mode: screen;
+      z-index: -1;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.75rem;
+    }
 
     header.app-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 1.25rem 1.75rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      backdrop-filter: blur(12px);
-      background: linear-gradient(to right, rgba(5, 7, 17, 0.96), rgba(8, 11, 30, 0.96));
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(103, 154, 255, 0.22), transparent 60%),
+        radial-gradient(circle at 100% 0%, rgba(227, 139, 255, 0.22), transparent 55%),
+        linear-gradient(to right, rgba(5, 7, 20, 0.96), rgba(8, 11, 32, 0.96));
       position: sticky;
       top: 0;
       z-index: 20;
     }
-    .logo-block { display: flex; align-items: center; gap: 0.9rem; }
-    .logo-dot {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: radial-gradient(circle at 30% 30%, #ffffff, #4f9cff 40%, #050711 80%);
-      box-shadow: 0 0 40px rgba(79, 156, 255, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.12);
+
+    .logo-block {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
     }
-    .logo-block h1 { font-size: 1.1rem; }
-    .logo-block p { font-size: 0.78rem; color: var(--text-soft); margin-top: 0.1rem; }
+
+    .logo-dot {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 35% 30%, #ffffff 0, #d2e8ff 12%, transparent 55%),
+        conic-gradient(from 210deg, #53a8ff, #9b5cff, #ffdd6e, #53a8ff);
+      box-shadow:
+        0 0 40px rgba(83, 168, 255, 0.9),
+        0 0 0 1px rgba(255, 255, 255, 0.18);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo-dot::after {
+      content: "";
+      position: absolute;
+      inset: 35%;
+      border-radius: inherit;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      opacity: 0.7;
+    }
+
+    .logo-block h1 {
+      font-size: 1.15rem;
+    }
+
+    .logo-block p {
+      font-size: 0.78rem;
+      color: var(--text-soft);
+      margin-top: 0.1rem;
+    }
 
     .session-info {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 0.2rem;
+      gap: 0.1rem;
       font-size: 0.8rem;
       color: var(--text-muted);
     }
-    .session-info span { color: var(--text-main); font-weight: 500; }
+
+    .session-info span {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
     .status-pill {
       padding: 0.2rem 0.7rem;
       border-radius: var(--radius-pill);
@@ -1182,35 +160,56 @@
       align-items: center;
       gap: 0.3rem;
     }
+
     .status-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--accent); box-shadow: 0 0 7px rgba(79, 156, 255, 0.9);
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(83, 168, 255, 0.9);
     }
 
     #globalStatus {
       position: fixed;
       left: 50%;
-      transform: translateX(-50%);
+      transform: translateX(-50%) translateY(10px);
       bottom: 1.25rem;
-      padding: 0.4rem 0.9rem;
+      padding: 0.42rem 1rem;
       border-radius: var(--radius-pill);
-      background: rgba(12, 16, 36, 0.96);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(7, 9, 26, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       color: var(--text-muted);
       font-size: 0.78rem;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.2s ease, transform 0.2s ease;
+      transition: opacity 0.18s ease, transform 0.18s ease;
       max-width: 90vw;
       z-index: 40;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    #globalStatus.visible { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
-    #globalStatus[data-level="ok"] { border-color: rgba(79, 156, 255, 0.6); color: #b9d7ff; }
-    #globalStatus[data-level="error"] { border-color: rgba(255, 84, 104, 0.7); color: #ffc1cb; }
-    #globalStatus[data-level="warn"] { border-color: rgba(255, 204, 79, 0.7); color: #ffe9b4; }
+
+    #globalStatus.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+
+    #globalStatus[data-level="ok"] {
+      border-color: rgba(83, 168, 255, 0.7);
+      color: #c0dcff;
+    }
+
+    #globalStatus[data-level="error"] {
+      border-color: rgba(255, 84, 104, 0.8);
+      color: #ffd4dc;
+    }
+
+    #globalStatus[data-level="warn"] {
+      border-color: rgba(255, 221, 110, 0.8);
+      color: #fff1c5;
+    }
 
     main.app-grid {
       display: grid;
@@ -1221,51 +220,116 @@
     }
 
     .panel {
-      background: radial-gradient(circle at top left, #1c2140 0, #101320 42%, #070816 100%);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(117, 153, 255, 0.14), transparent 55%),
+        radial-gradient(circle at 100% 100%, rgba(255, 176, 117, 0.12), transparent 55%),
+        linear-gradient(to bottom right, rgba(9, 11, 31, 0.98), rgba(6, 7, 24, 0.98));
       border-radius: var(--radius-lg);
-      padding: 0.9rem 1rem 1rem;
+      padding: 0.9rem 1rem 1.1rem;
       box-shadow: var(--shadow-soft), var(--shadow-subtle);
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.05);
       display: flex;
       flex-direction: column;
       gap: 0.65rem;
+      position: relative;
+      overflow: hidden;
     }
-    .panel:nth-of-type(1) { grid-row: span 2; }
-    .panel.kpi-panel { grid-column: 2 / 4; }
-    .panel.log-panel { grid-column: 1 / 3; }
-    .panel.export-panel { grid-column: 3 / 4; }
 
-    .panel h2 { font-size: 0.95rem; margin-bottom: 0.15rem; }
-    .panel h3 { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.4rem; }
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(255,255,255,0.04), transparent 55%),
+        radial-gradient(circle at 80% 0%, rgba(121, 159, 255, 0.07), transparent 55%);
+      opacity: 0.6;
+      pointer-events: none;
+      mix-blend-mode: soft-light;
+    }
+
+    .panel > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .panel h2 {
+      font-size: 0.95rem;
+      margin-bottom: 0.15rem;
+    }
+
+    .panel h3 {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+    }
+
+    .panel--backend {
+      grid-column: 1 / 2;
+      grid-row: 1 / 3;
+    }
+
+    .panel--config {
+      grid-column: 2 / 3;
+      grid-row: 1 / 2;
+    }
+
+    .panel--kpi {
+      grid-column: 3 / 4;
+      grid-row: 1 / 2;
+    }
+
+    .panel--telemetry {
+      grid-column: 2 / 4;
+      grid-row: 2 / 3;
+    }
+
+    .panel--log {
+      grid-column: 1 / 3;
+      grid-row: 3 / 4;
+    }
+
+    .panel--export {
+      grid-column: 3 / 4;
+      grid-row: 3 / 4;
+    }
+
     label {
       font-size: 0.78rem;
       color: var(--text-muted);
       display: flex;
       flex-direction: column;
-      gap: 0.2rem;
+      gap: 0.22rem;
       margin-bottom: 0.3rem;
     }
+
     input[type="text"],
     input[type="number"],
     select,
     textarea {
-      background: rgba(7, 10, 22, 0.9);
+      background: rgba(4, 6, 20, 0.96);
       border-radius: var(--radius-md);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.07);
       padding: 0.45rem 0.55rem;
       color: var(--text-main);
       font-size: 0.8rem;
       outline: none;
-      transition: border 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+      transition:
+        border 0.15s ease,
+        background 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.05s ease;
     }
+
     input[type="text"]:focus,
     input[type="number"]:focus,
     select:focus,
     textarea:focus {
       border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(79, 156, 255, 0.3);
-      background: rgba(7, 10, 24, 1);
+      box-shadow: 0 0 0 1px rgba(83, 168, 255, 0.4);
+      background: rgba(4, 7, 24, 1);
+      transform: translateY(-0.5px);
     }
+
     textarea {
       resize: vertical;
       min-height: 70px;
@@ -1279,27 +343,39 @@
       appearance: none;
       height: 4px;
       border-radius: 999px;
-      background: linear-gradient(90deg, var(--accent) 0%, #38d996 60%, #ffcc4f 100%);
+      background: linear-gradient(90deg, #53a8ff 0%, #4ee1a8 55%, #ffdd6e 100%);
       outline: none;
       margin: 0.4rem 0;
     }
+
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 14px; height: 14px; border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
       background: #ffffff;
-      border: 2px solid var(--accent);
-      box-shadow: 0 0 12px rgba(79, 156, 255, 0.7);
+      border: 2px solid #53a8ff;
+      box-shadow: 0 0 12px rgba(83, 168, 255, 0.7);
       cursor: pointer;
     }
+
     input[type="range"]::-moz-range-thumb {
-      width: 14px; height: 14px; border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
       background: #ffffff;
-      border: 2px solid var(--accent);
-      box-shadow: 0 0 12px rgba(79, 156, 255, 0.7);
+      border: 2px solid #53a8ff;
+      box-shadow: 0 0 12px rgba(83, 168, 255, 0.7);
       cursor: pointer;
     }
-    .range-row { display: flex; align-items: center; gap: 0.4rem; }
+
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
     .range-value {
       font-size: 0.78rem;
       color: var(--text-muted);
@@ -1313,10 +389,11 @@
       gap: 0.4rem;
       margin-top: 0.15rem;
     }
+
     button {
       border-radius: var(--radius-pill);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(16, 21, 43, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(14, 18, 42, 0.9);
       color: var(--text-main);
       font-size: 0.78rem;
       padding: 0.38rem 0.8rem;
@@ -1325,49 +402,75 @@
       align-items: center;
       justify-content: center;
       gap: 0.35rem;
-      transition: background 0.15s ease, border 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
+      transition:
+        background 0.15s ease,
+        border 0.15s ease,
+        transform 0.06s ease,
+        box-shadow 0.2s ease;
       white-space: nowrap;
     }
-    button.primary {
-      background: linear-gradient(135deg, #4f9cff, #38d996);
-      border-color: rgba(255, 255, 255, 0.18);
-      color: #050711;
-      font-weight: 600;
-      box-shadow: 0 10px 25px rgba(79, 156, 255, 0.45);
-    }
-    button.danger {
-      background: rgba(255, 84, 104, 0.06);
-      border-color: rgba(255, 84, 104, 0.7);
-      color: #ff8d9d;
-    }
-    button.small { font-size: 0.72rem; padding: 0.25rem 0.6rem; }
-    button:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
-    button:not(:disabled):hover {
-      background: rgba(30, 37, 74, 0.95);
-      transform: translateY(-1px);
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
-    }
-    button.primary:not(:disabled):hover {
-      background: linear-gradient(135deg, #63aaff, #4ee1a8);
-      transform: translateY(-1px);
-      box-shadow: 0 14px 30px rgba(79, 156, 255, 0.55);
-    }
-    button.danger:not(:disabled):hover {
-      background: rgba(255, 84, 104, 0.12);
-      transform: translateY(-1px);
-    }
-    button:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
 
-    .help-text { font-size: 0.72rem; color: var(--text-soft); }
+    button.primary {
+      background: linear-gradient(135deg, #53a8ff, #4ee1a8);
+      border-color: rgba(255, 255, 255, 0.18);
+      color: #020318;
+      font-weight: 600;
+      box-shadow: 0 12px 26px rgba(83, 168, 255, 0.55);
+    }
+
+    button.danger {
+      background: rgba(255, 84, 104, 0.1);
+      border-color: rgba(255, 84, 104, 0.7);
+      color: #ff9cab;
+    }
+
+    button.small {
+      font-size: 0.72rem;
+      padding: 0.25rem 0.6rem;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
+      box-shadow: none;
+      transform: none;
+    }
+
+    button:not(:disabled):hover {
+      background: rgba(22, 28, 64, 0.98);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65);
+    }
+
+    button.primary:not(:disabled):hover {
+      background: linear-gradient(135deg, #66b2ff, #5befb2);
+      box-shadow: 0 16px 32px rgba(83, 168, 255, 0.65);
+    }
+
+    button.danger:not(:disabled):hover {
+      background: rgba(255, 84, 104, 0.17);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    .help-text {
+      font-size: 0.72rem;
+      color: var(--text-soft);
+    }
+
     .session-list {
       margin-top: 0.3rem;
       border-radius: var(--radius-md);
-      background: rgba(5, 7, 17, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.03);
+      background: rgba(5, 7, 20, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.04);
       max-height: 190px;
       overflow: hidden auto;
       padding: 0.15rem;
     }
+
     .session-row {
       width: 100%;
       justify-content: space-between;
@@ -1375,41 +478,67 @@
       border-radius: var(--radius-md);
       padding: 0.3rem 0.4rem;
       border: none;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
       font-size: 0.75rem;
       color: var(--text-soft);
     }
-    .session-row strong { color: var(--text-main); font-weight: 500; }
-    .session-row:last-child { border-bottom: none; }
-    .session-row.active { background: rgba(79, 156, 255, 0.12); color: var(--text-main); }
-    .session-row:hover:not(.active) { background: rgba(255, 255, 255, 0.02); }
+
+    .session-row strong {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .session-row:last-child {
+      border-bottom: none;
+    }
+
+    .session-row.active {
+      background: rgba(83, 168, 255, 0.16);
+      color: var(--text-main);
+    }
+
+    .session-row:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
     .session-row-id {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 0.7rem;
     }
-    .session-row-status { font-size: 0.7rem; color: var(--text-soft); margin-left: 0.3rem; }
+
+    .session-row-status {
+      font-size: 0.7rem;
+      color: var(--text-soft);
+      margin-left: 0.3rem;
+    }
 
     .grid-two {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.5rem;
     }
+
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(120px, 1fr));
-      gap: 0.55rem;
+      grid-template-columns: repeat(2, minmax(140px, 1fr));
+      gap: 0.6rem;
       margin-top: 0.35rem;
     }
+
     .kpi-card {
-      background: radial-gradient(circle at top, #1c2140 0, #101320 60%, #070816 100%);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(120, 167, 255, 0.18), transparent 65%),
+        radial-gradient(circle at 100% 100%, rgba(255, 198, 135, 0.16), transparent 65%),
+        linear-gradient(to bottom right, #0a0d26, #060819);
       border-radius: 12px;
-      padding: 0.55rem 0.65rem;
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 0.55rem 0.7rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
       display: flex;
       flex-direction: column;
       gap: 0.1rem;
-      min-height: 72px;
+      min-height: 78px;
     }
+
     .kpi-title {
       font-size: 0.76rem;
       color: var(--text-muted);
@@ -1418,24 +547,40 @@
       align-items: center;
       gap: 0.4rem;
     }
+
     .badge {
-      padding: 0.08rem 0.4rem;
+      padding: 0.08rem 0.45rem;
       border-radius: 999px;
-      background: #252a3d;
+      background: rgba(28, 34, 64, 0.9);
       color: var(--accent-strong);
       font-size: 0.65rem;
       white-space: nowrap;
     }
-    .kpi-value { font-size: 1.1rem; font-weight: 600; margin-top: 0.1rem; }
-    .kpi-sub { font-size: 0.72rem; color: var(--text-soft); }
-    .kpi-sub.positive { color: #4ee1a8; }
-    .kpi-sub.negative { color: #ff8d9d; }
+
+    .kpi-value {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-top: 0.12rem;
+    }
+
+    .kpi-sub {
+      font-size: 0.72rem;
+      color: var(--text-soft);
+    }
+
+    .kpi-sub.positive {
+      color: #5befb2;
+    }
+
+    .kpi-sub.negative {
+      color: #ff9cab;
+    }
 
     .log-output {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      background: rgba(5, 7, 17, 0.95);
+      background: rgba(4, 6, 20, 0.98);
       border-radius: var(--radius-md);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.06);
       padding: 0.5rem 0.55rem;
       font-size: 0.72rem;
       color: #d0d3ea;
@@ -1446,40 +591,114 @@
       word-break: break-word;
     }
 
-    .inline { display: inline-flex; align-items: center; gap: 0.25rem; }
-    .inline input[type="checkbox"] { margin: 0; }
+    .inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .inline input[type="checkbox"] {
+      margin: 0;
+    }
 
     .export-output {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 0.72rem;
-      background: rgba(5, 7, 17, 0.95);
+      background: rgba(4, 6, 20, 0.98);
       border-radius: var(--radius-md);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.06);
       margin-top: 0.35rem;
       padding: 0.45rem 0.55rem;
       min-height: 120px;
       max-height: 260px;
     }
 
-    .run-info { font-size: 0.74rem; color: var(--text-soft); margin-top: 0.2rem; }
+    .run-info {
+      font-size: 0.74rem;
+      color: var(--text-soft);
+      margin-top: 0.2rem;
+    }
+
     .run-info code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 0.7rem;
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.05);
       padding: 0.1rem 0.35rem;
       border-radius: 999px;
     }
 
-    @media (max-width: 1024px) {
-      main.app-grid { grid-template-columns: 1fr; }
-      .panel, .panel.kpi-panel, .panel.log-panel, .panel.export-panel { grid-column: auto; grid-row: auto; }
-      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .telemetry-table-wrapper {
+      margin-top: 0.4rem;
+      border-radius: var(--radius-md);
+      background: rgba(4, 6, 20, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      max-height: 260px;
+      overflow: hidden auto;
     }
+
+    .telemetry-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+    }
+
+    .telemetry-table th,
+    .telemetry-table td {
+      padding: 0.28rem 0.45rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      text-align: left;
+    }
+
+    .telemetry-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+      background: rgba(10, 13, 31, 0.95);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .telemetry-table tbody tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .telemetry-empty {
+      text-align: center;
+      color: var(--text-soft);
+      padding: 0.5rem 0;
+    }
+
+    @media (max-width: 1024px) {
+      main.app-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        grid-column: auto;
+        grid-row: auto;
+      }
+
+      .kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
     @media (max-width: 640px) {
-      header.app-header { flex-direction: column; align-items: flex-start; gap: 0.7rem; }
-      .session-info { align-items: flex-start; }
-      .kpi-grid { grid-template-columns: 1fr; }
-      .session-list { max-height: 160px; }
+      header.app-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.7rem;
+      }
+
+      .session-info {
+        align-items: flex-start;
+      }
+
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .session-list {
+        max-height: 160px;
+      }
     }
   </style>
 </head>
@@ -1489,12 +708,13 @@
       <div class="logo-dot"></div>
       <div>
         <h1>SynQc Temporal Dynamics Series</h1>
-        <p>Drive–Probe–Drive · Control Panel</p>
+        <p>Interstellar Drive–Probe–Drive Control Console</p>
       </div>
     </div>
     <div class="session-info">
       <div>Mode: <span id="sessionModeLabel">Local Simulation</span></div>
       <div>Session: <span id="sessionId">—</span></div>
+      <div>Shots (this session): <span id="shotsCounter">0</span></div>
       <div>
         <span class="status-pill">
           <span class="status-dot"></span>
@@ -1507,21 +727,31 @@
   <div id="globalStatus" data-level="ok">Ready.</div>
 
   <main class="app-grid">
-    <!-- Left column -->
-    <section class="panel">
+    <!-- Backend & Session -->
+    <section class="panel panel--backend">
       <h2>Backend & Session</h2>
       <label for="apiBase">
         API base URL
-        <input id="apiBase" type="text" spellcheck="false" autocomplete="off"
-               placeholder="http://localhost:8000/api/v1/synqc" />
+        <input
+          id="apiBase"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="http://localhost:8000/api/v1/synqc"
+        />
       </label>
       <label for="apiKey">
         API key (optional)
-        <input id="apiKey" type="text" spellcheck="false" autocomplete="off"
-               placeholder="X-API-Key value" />
+        <input
+          id="apiKey"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="X-API-Key value"
+        />
       </label>
       <p class="help-text">
-        Backend can enforce <code>X-API-Key</code> for multi-user labs.
+        Backend can enforce <code>X-API-Key</code> for multi-user labs or cloud gateways.
       </p>
       <div class="button-row">
         <button id="btnHealth" class="small">Ping backend</button>
@@ -1534,7 +764,7 @@
         <button id="btnSaveSession" class="small">Save session</button>
       </div>
       <p class="help-text">
-        New session creates a fresh ID. Save updates the active session’s config.
+        New session creates a fresh ID. Save updates the active session’s configuration on the backend.
       </p>
 
       <h3>Sessions on disk</h3>
@@ -1568,12 +798,15 @@
       <h2>Notes</h2>
       <label for="notes">
         Session / run annotation
-        <textarea id="notes" placeholder="Optional annotation for this session…"></textarea>
+        <textarea
+          id="notes"
+          placeholder="e.g. Transmon, 5q, sweet spot search, 4K, SynQc TDS v0.3 test."
+        ></textarea>
       </label>
     </section>
 
-    <!-- Middle: config + run -->
-    <section class="panel">
+    <!-- Config -->
+    <section class="panel panel--config">
       <h2>Drive–Probe–Drive configuration</h2>
       <div class="grid-two">
         <label for="driveEnvelope">
@@ -1600,7 +833,9 @@
         Probe strength (ε)
         <div class="range-row">
           <input id="probeStrength" type="range" min="0" max="1" step="0.01" value="0.2" />
-          <div class="range-value"><span id="probeStrengthValue">0.200</span></div>
+          <div class="range-value">
+            <span id="probeStrengthValue">0.200</span>
+          </div>
         </div>
       </label>
 
@@ -1608,17 +843,44 @@
         Probe duration (τₚ, ns)
         <div class="range-row">
           <input id="probeDuration" type="range" min="5" max="5000" step="5" value="120" />
-          <div class="range-value"><span id="probeDurationValue">120</span> ns</div>
+          <div class="range-value">
+            <span id="probeDurationValue">120</span> ns
+          </div>
         </div>
       </label>
+
+      <div class="grid-two">
+        <label for="numIterations">
+          Iterations per run
+          <input
+            id="numIterations"
+            type="number"
+            min="1"
+            max="10_000"
+            step="1"
+            value="5"
+          />
+        </label>
+        <label for="shotLimit">
+          Shot limit per run
+          <input
+            id="shotLimit"
+            type="number"
+            min="128"
+            max="1_000_000"
+            step="128"
+            value="4096"
+          />
+        </label>
+      </div>
 
       <label for="objective">
         Objective
         <select id="objective">
-          <option value="maximize-fidelity">Maximize fidelity</option>
-          <option value="minimize-latency">Minimize latency</option>
-          <option value="info-vs-damage">Info vs back-action</option>
-          <option value="stability-window">Stability over time</option>
+          <option value="maximize-fidelity">Maximize DPD fidelity</option>
+          <option value="minimize-latency">Minimize loop latency</option>
+          <option value="info-vs-damage">Info gain vs back-action</option>
+          <option value="stability-window">Stability window over time</option>
         </select>
       </label>
 
@@ -1629,16 +891,15 @@
         <button id="btnKillRun" class="danger small">Kill switch</button>
       </div>
       <p class="help-text">
-        Backend maps these to <code>/sessions/{id}/run</code> (mode=<code>run</code> or <code>dryrun</code>)
-        and <code>/sessions/{id}/kill</code>.
+        Backend maps these to <code>/sessions/{id}/run</code> (mode=<code>run</code> or
+        <code>dryrun</code>) and <code>/sessions/{id}/kill</code>, plus
+        <code>num_iterations</code> and <code>shot_limit</code> hints.
       </p>
-      <div id="lastRunInfo" class="run-info">
-        No runs yet.
-      </div>
+      <div id="lastRunInfo" class="run-info">No runs yet.</div>
     </section>
 
-    <!-- Right: KPIs -->
-    <section class="panel kpi-panel">
+    <!-- KPIs -->
+    <section class="panel panel--kpi">
       <h2>Live KPIs</h2>
       <div class="kpi-grid">
         <div class="kpi-card">
@@ -1676,11 +937,68 @@
       </div>
     </section>
 
+    <!-- Telemetry -->
+    <section class="panel panel--telemetry">
+      <h2>Real-time telemetry</h2>
+      <p class="help-text">
+        Monitor live metrics from active hardware adapters / cloud backends via
+        <code>/sessions/{id}/telemetry</code>.
+      </p>
+      <div class="grid-two telemetry-controls">
+        <label>
+          Poll interval (ms)
+          <input
+            id="telemetryInterval"
+            type="number"
+            min="250"
+            max="10000"
+            step="250"
+            value="2000"
+          />
+        </label>
+        <label>
+          History depth
+          <input
+            id="telemetryDepth"
+            type="number"
+            min="8"
+            max="256"
+            step="8"
+            value="64"
+          />
+        </label>
+      </div>
+      <div class="button-row">
+        <button id="btnTelemetryStart" class="small">Start monitoring</button>
+        <button id="btnTelemetryStop" class="small" disabled>Stop</button>
+      </div>
+      <div class="telemetry-table-wrapper">
+        <table class="telemetry-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Provider</th>
+              <th>Fidelity</th>
+              <th>Latency (µs)</th>
+              <th>Shots used</th>
+              <th>Shot rate</th>
+            </tr>
+          </thead>
+          <tbody id="telemetryTableBody">
+            <tr>
+              <td colspan="6" class="telemetry-empty">No telemetry yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- Logs -->
-    <section class="panel log-panel">
+    <section class="panel panel--log">
       <h2>Run log</h2>
       <p class="help-text">
-        Backed by <code>/sessions/{id}/logs</code>.
+        Backed by <code>/sessions/{id}/logs</code>. Combine with telemetry for full-stack
+        monitoring.
       </p>
       <div class="button-row">
         <button id="btnRefreshLogs" class="small">Refresh log</button>
@@ -1694,10 +1012,11 @@
     </section>
 
     <!-- Export -->
-    <section class="panel export-panel">
+    <section class="panel panel--export">
       <h2>Export</h2>
       <p class="help-text">
-        Uses <code>/sessions/{id}/export?format=…</code>.
+        Uses <code>/sessions/{id}/export?format=…</code>. Feed this into your notebooks or
+        data lake.
       </p>
       <label for="exportFormat">
         Format
@@ -1710,15 +1029,19 @@
       <div class="button-row">
         <button id="btnExport" class="small">Export snapshot</button>
       </div>
-      <textarea id="exportOutput" class="export-output" readonly spellcheck="false">
-Waiting for export…
-      </textarea>
+      <textarea
+        id="exportOutput"
+        class="export-output"
+        readonly
+        spellcheck="false"
+      >Waiting for export…</textarea>
     </section>
   </main>
 
   <script>
     (function () {
       const TARGET_FIDELITY = 0.975;
+
       const state = {
         apiBase: "",
         apiKey: "",
@@ -1731,6 +1054,10 @@ Waiting for export…
         autosaveTimer: null,
         logTimer: null,
         statusTimer: null,
+        telemetryTimer: null,
+        totalShotsUsed: 0,
+        totalShotLimit: 0,
+        totalShotsInitialized: false,
       };
 
       document.addEventListener("DOMContentLoaded", init);
@@ -1745,7 +1072,9 @@ Waiting for export…
           if (origin && origin !== "null" && origin !== "file://") {
             defaultBase = origin.replace(/\/+$/, "") + "/api/v1/synqc";
           }
-        } catch (e) {}
+        } catch (e) {
+          // ignore
+        }
 
         if (!defaultBase) defaultBase = "http://localhost:8000/api/v1/synqc";
         apiBaseInput.value = defaultBase;
@@ -1755,6 +1084,7 @@ Waiting for export…
           state.apiBase = e.target.value.trim();
           showStatus("API base set to " + state.apiBase, "ok");
         });
+
         apiKeyInput.addEventListener("change", (e) => {
           state.apiKey = e.target.value.trim();
           showStatus("API key updated", "ok");
@@ -1764,6 +1094,7 @@ Waiting for export…
         updateSessionHeader();
         updateKpis();
         updateExportOutput("Waiting for export…");
+        updateShotsCounter();
 
         pingHealth().catch(() => {});
         refreshSessionList().catch(() => {});
@@ -1773,61 +1104,113 @@ Waiting for export…
         document.getElementById("btnHealth").addEventListener("click", () => {
           pingHealth().catch(() => {});
         });
+
         document
           .getElementById("btnRefreshSessions")
-          .addEventListener("click", () => refreshSessionList().catch(() => {}));
+          .addEventListener("click", () => {
+            refreshSessionList().catch(() => {});
+          });
+
         document
           .getElementById("btnNewSession")
-          .addEventListener("click", () => createNewSessionFromConfig().catch(() => {}));
+          .addEventListener("click", () => {
+            createNewSessionFromConfig().catch(() => {});
+          });
+
         document
           .getElementById("btnSaveSession")
-          .addEventListener("click", () => saveSessionConfig().catch(() => {}));
+          .addEventListener("click", () => {
+            saveSessionConfig().catch(() => {});
+          });
 
-        ["hardwareTarget", "hardwarePreset", "driveEnvelope", "adaptiveRule", "objective"].forEach(
-          (id) => document.getElementById(id).addEventListener("change", scheduleAutosave)
-        );
-        document.getElementById("notes").addEventListener("change", scheduleAutosave);
+        [
+          "hardwareTarget",
+          "hardwarePreset",
+          "driveEnvelope",
+          "adaptiveRule",
+          "objective",
+          "numIterations",
+          "shotLimit",
+        ].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener("change", scheduleAutosave);
+        });
+
+        const notes = document.getElementById("notes");
+        if (notes) notes.addEventListener("change", scheduleAutosave);
 
         const probeStrength = document.getElementById("probeStrength");
         const probeDuration = document.getElementById("probeDuration");
+
         probeStrength.addEventListener("input", () =>
           updateProbeStrengthDisplay(parseFloat(probeStrength.value))
         );
         probeStrength.addEventListener("change", scheduleAutosave);
+
         probeDuration.addEventListener("input", () =>
           updateProbeDurationDisplay(parseInt(probeDuration.value, 10))
         );
         probeDuration.addEventListener("change", scheduleAutosave);
+
         updateProbeStrengthDisplay(parseFloat(probeStrength.value));
         updateProbeDurationDisplay(parseInt(probeDuration.value, 10));
 
         document
           .getElementById("btnDryRun")
-          .addEventListener("click", () => launchRun("dryrun").catch(() => {}));
+          .addEventListener("click", () => {
+            launchRun("dryrun").catch(() => {});
+          });
+
         document
           .getElementById("btnLaunchRun")
-          .addEventListener("click", () => launchRun("run").catch(() => {}));
+          .addEventListener("click", () => {
+            launchRun("run").catch(() => {});
+          });
+
         document
           .getElementById("btnKillRun")
-          .addEventListener("click", () => killRun().catch(() => {}));
+          .addEventListener("click", () => {
+            killRun().catch(() => {});
+          });
 
         document
           .getElementById("btnRefreshLogs")
-          .addEventListener("click", () => refreshLogs().catch(() => {}));
+          .addEventListener("click", () => {
+            refreshLogs().catch(() => {});
+          });
+
         document
           .getElementById("btnClearLogs")
-          .addEventListener("click", () => clearLogs().catch(() => {}));
+          .addEventListener("click", () => {
+            clearLogs().catch(() => {});
+          });
+
         document
           .getElementById("autoRefreshLogs")
-          .addEventListener("change", (e) => setAutoRefreshLogs(e.target.checked));
+          .addEventListener("change", (e) => {
+            setAutoRefreshLogs(e.target.checked);
+          });
 
         const exportFormatSelect = document.getElementById("exportFormat");
         exportFormatSelect.addEventListener("change", (e) => {
           state.exportFormat = e.target.value;
         });
+
+        document.getElementById("btnExport").addEventListener("click", () => {
+          exportSnapshot().catch(() => {});
+        });
+
         document
-          .getElementById("btnExport")
-          .addEventListener("click", () => exportSnapshot().catch(() => {}));
+          .getElementById("btnTelemetryStart")
+          .addEventListener("click", () => {
+            startTelemetry().catch(() => {});
+          });
+
+        document
+          .getElementById("btnTelemetryStop")
+          .addEventListener("click", () => {
+            stopTelemetry();
+          });
       }
 
       function showStatus(message, level) {
@@ -1836,7 +1219,9 @@ Waiting for export…
         bar.setAttribute("data-level", level || "ok");
         bar.classList.add("visible");
         if (state.statusTimer) clearTimeout(state.statusTimer);
-        state.statusTimer = setTimeout(() => bar.classList.remove("visible"), 4500);
+        state.statusTimer = setTimeout(() => {
+          bar.classList.remove("visible");
+        }, 4500);
       }
 
       function apiFetch(path, options) {
@@ -1873,8 +1258,10 @@ Waiting for export…
         return apiFetch("/health")
           .then((data) => {
             state.health = data;
+            const version = data.version || "?";
+            const apiPrefix = data.api_prefix || state.apiBase;
             showStatus(
-              "Backend healthy (v" + data.version + ") @ " + (data.api_prefix || state.apiBase),
+              "Backend healthy (v" + version + ") @ " + apiPrefix,
               "ok"
             );
           })
@@ -1886,7 +1273,9 @@ Waiting for export…
 
       function scheduleAutosave() {
         if (state.autosaveTimer) clearTimeout(state.autosaveTimer);
-        state.autosaveTimer = setTimeout(() => saveSessionConfig().catch(() => {}), 600);
+        state.autosaveTimer = setTimeout(() => {
+          saveSessionConfig().catch(() => {});
+        }, 600);
       }
 
       function buildConfigFromForm() {
@@ -1895,9 +1284,20 @@ Waiting for export…
           hardware_preset: document.getElementById("hardwarePreset").value,
           drive_envelope: document.getElementById("driveEnvelope").value,
           probe_strength: parseFloat(document.getElementById("probeStrength").value),
-          probe_duration_ns: parseInt(document.getElementById("probeDuration").value, 10),
+          probe_duration_ns: parseInt(
+            document.getElementById("probeDuration").value,
+            10
+          ),
           adaptive_rule: document.getElementById("adaptiveRule").value,
           objective: document.getElementById("objective").value,
+          num_iterations_default: parseInt(
+            document.getElementById("numIterations").value,
+            10
+          ),
+          shot_limit_default: parseInt(
+            document.getElementById("shotLimit").value,
+            10
+          ),
           notes: document.getElementById("notes").value || null,
         };
       }
@@ -1906,8 +1306,9 @@ Waiting for export…
         if (!cfg) return;
         const set = (id, val) => {
           const el = document.getElementById(id);
-          if (val !== undefined && el) el.value = val;
+          if (val !== undefined && el !== null) el.value = val;
         };
+
         set("hardwareTarget", cfg.hardware_target);
         set("hardwarePreset", cfg.hardware_preset);
         set("driveEnvelope", cfg.drive_envelope);
@@ -1919,11 +1320,21 @@ Waiting for export…
           s.value = cfg.probe_strength;
           updateProbeStrengthDisplay(cfg.probe_strength);
         }
+
         if (typeof cfg.probe_duration_ns === "number") {
           const d = document.getElementById("probeDuration");
           d.value = cfg.probe_duration_ns;
           updateProbeDurationDisplay(cfg.probe_duration_ns);
         }
+
+        if (typeof cfg.num_iterations_default === "number") {
+          set("numIterations", cfg.num_iterations_default);
+        }
+
+        if (typeof cfg.shot_limit_default === "number") {
+          set("shotLimit", cfg.shot_limit_default);
+        }
+
         document.getElementById("notes").value = cfg.notes || "";
       }
 
@@ -1931,6 +1342,7 @@ Waiting for export…
         if (!isFinite(v)) v = 0;
         document.getElementById("probeStrengthValue").textContent = v.toFixed(3);
       }
+
       function updateProbeDurationDisplay(v) {
         if (!isFinite(v)) v = 0;
         document.getElementById("probeDurationValue").textContent = v.toFixed(0);
@@ -1945,8 +1357,12 @@ Waiting for export…
           .then((session) => {
             state.session = session;
             state.lastRun = null;
+            state.totalShotsUsed = 0;
+            state.totalShotLimit = 0;
+            state.totalShotsInitialized = false;
             updateSessionHeader();
             updateKpis();
+            updateShotsCounter();
             showStatus("Created session " + session.session_id, "ok");
             return refreshSessionList();
           })
@@ -1958,7 +1374,10 @@ Waiting for export…
 
       function saveSessionConfig() {
         const cfg = buildConfigFromForm();
-        const sessionId = state.session && state.session.session_id ? state.session.session_id : null;
+        const sessionId =
+          state.session && state.session.session_id
+            ? state.session.session_id
+            : null;
         return apiFetch("/sessions", {
           method: "POST",
           body: JSON.stringify({ session_id: sessionId, config: cfg }),
@@ -1999,6 +1418,7 @@ Waiting for export…
           container.appendChild(p);
           return;
         }
+
         state.sessionsList
           .slice()
           .sort(
@@ -2017,28 +1437,39 @@ Waiting for export…
 
             const statusSpan = document.createElement("span");
             statusSpan.className = "session-row-status";
-            statusSpan.textContent = session.status_text || session.status || "";
+            statusSpan.textContent =
+              session.status_text || session.status || "";
 
             btn.appendChild(idSpan);
             btn.appendChild(statusSpan);
 
             const active =
-              state.session && state.session.session_id === session.session_id;
+              state.session &&
+              state.session.session_id === session.session_id;
             if (active) btn.classList.add("active");
 
-            btn.addEventListener("click", () => loadSession(session.session_id).catch(() => {}));
+            btn.addEventListener("click", () => {
+              loadSession(session.session_id).catch(() => {});
+            });
+
             container.appendChild(btn);
           });
       }
 
       function loadSession(sessionId) {
-        return apiFetch("/sessions/" + encodeURIComponent(sessionId))
+        return apiFetch(
+          "/sessions/" + encodeURIComponent(sessionId)
+        )
           .then((session) => {
             state.session = session;
             state.lastRun = null;
+            state.totalShotsUsed = 0;
+            state.totalShotLimit = 0;
+            state.totalShotsInitialized = false;
             applyConfigToForm(session.config);
             updateSessionHeader();
             updateKpis();
+            updateShotsCounter();
             showStatus("Loaded session " + sessionId, "ok");
             renderSessionList();
             return refreshLogs();
@@ -2053,19 +1484,23 @@ Waiting for export…
         const modeEl = document.getElementById("sessionModeLabel");
         const idEl = document.getElementById("sessionId");
         const statusEl = document.getElementById("sessionStatus");
+
         if (!state.session) {
           modeEl.textContent = "Local Simulation";
           idEl.textContent = "—";
           statusEl.textContent = "No session yet";
           return;
         }
+
         modeEl.textContent = state.session.mode_label || "Session";
         idEl.textContent = state.session.session_id;
-        statusEl.textContent = state.session.status_text || state.session.status || "";
+        statusEl.textContent =
+          state.session.status_text || state.session.status || "";
       }
 
       function updateKpis() {
         const k = state.session ? state.session.last_kpis : null;
+
         const fidelityEl = document.getElementById("kpiFidelity");
         const fidelityDeltaEl = document.getElementById("kpiFidelityDelta");
         const latencyEl = document.getElementById("kpiLatency");
@@ -2077,6 +1512,7 @@ Waiting for export…
 
         fidelityDeltaEl.classList.remove("positive", "negative");
         latencyDeltaEl.classList.remove("positive", "negative");
+        backHintEl.classList.remove("positive", "negative");
 
         if (!k) {
           fidelityEl.textContent = "—";
@@ -2107,7 +1543,8 @@ Waiting for export…
         if (Math.abs(delta) < 1e-4) {
           fidelityDeltaEl.textContent = "At target";
         } else if (delta > 0) {
-          fidelityDeltaEl.textContent = "+" + delta.toFixed(3) + " vs target";
+          fidelityDeltaEl.textContent =
+            "+" + delta.toFixed(3) + " vs target";
           fidelityDeltaEl.classList.add("positive");
         } else {
           fidelityDeltaEl.textContent = delta.toFixed(3) + " vs target";
@@ -2136,8 +1573,30 @@ Waiting for export…
           backHintEl.textContent = "Balanced regime";
         }
 
-        shotsEl.textContent = formatShots(shotsUsed) + " / " + formatShots(shotLimit);
+        shotsEl.textContent =
+          formatShots(shotsUsed) + " / " + formatShots(shotLimit);
         shotsFracEl.textContent = (frac * 100).toFixed(1) + "% consumed";
+
+        if (!state.totalShotsInitialized) {
+          state.totalShotsUsed = shotsUsed;
+          state.totalShotLimit = shotLimit;
+          state.totalShotsInitialized = true;
+        }
+
+        updateShotsCounter();
+      }
+
+      function updateShotsCounter() {
+        const el = document.getElementById("shotsCounter");
+        if (!el) return;
+        const used = state.totalShotsUsed || 0;
+        const limit = state.totalShotLimit || 0;
+        if (limit > 0) {
+          el.textContent =
+            formatShots(used) + " / " + formatShots(limit);
+        } else {
+          el.textContent = formatShots(used);
+        }
       }
 
       function formatShots(n) {
@@ -2152,23 +1611,53 @@ Waiting for export…
           showStatus("Create or load a session first.", "warn");
           return Promise.resolve();
         }
+
         const sessionId = state.session.session_id;
-        const payload = { mode: mode === "dryrun" ? "dryrun" : "run" };
+
+        const numIterations = parseInt(
+          document.getElementById("numIterations").value,
+          10
+        );
+        const shotLimit = parseInt(
+          document.getElementById("shotLimit").value,
+          10
+        );
+
+        const payload = {
+          mode: mode === "dryrun" ? "dryrun" : "run",
+          num_iterations: isFinite(numIterations) ? numIterations : undefined,
+          shot_limit: isFinite(shotLimit) ? shotLimit : undefined,
+        };
 
         const runBtn = document.getElementById("btnLaunchRun");
         const dryBtn = document.getElementById("btnDryRun");
         runBtn.disabled = true;
         dryBtn.disabled = true;
 
-        return apiFetch("/sessions/" + encodeURIComponent(sessionId) + "/run", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        })
+        return apiFetch(
+          "/sessions/" + encodeURIComponent(sessionId) + "/run",
+          {
+            method: "POST",
+            body: JSON.stringify(payload),
+          }
+        )
           .then((resp) => {
             state.session = resp.session;
             state.lastRun = resp.run;
+
+            if (resp.run && resp.run.kpis) {
+              const rk = resp.run.kpis;
+              if (isFinite(rk.shots_used)) {
+                state.totalShotsUsed += rk.shots_used;
+              }
+              if (isFinite(rk.shot_limit)) {
+                state.totalShotLimit += rk.shot_limit;
+              }
+            }
+
             updateSessionHeader();
             updateKpis();
+            updateShotsCounter();
             renderSessionList();
             updateLastRunInfo();
             showStatus(
@@ -2194,9 +1683,11 @@ Waiting for export…
           el.textContent = "No runs yet.";
           return;
         }
+
         const ts = run.created_at || "";
         const modeLabel = run.mode === "dryrun" ? "dry-run" : "run";
         const k = run.kpis;
+
         let summary = "";
         if (k) {
           summary =
@@ -2211,6 +1702,7 @@ Waiting for export…
             "/" +
             formatShots(k.shot_limit);
         }
+
         el.innerHTML =
           "Last " +
           modeLabel +
@@ -2226,12 +1718,19 @@ Waiting for export…
           showStatus("No active session to kill.", "warn");
           return Promise.resolve();
         }
+
         const sessionId = state.session.session_id;
-        return apiFetch("/sessions/" + encodeURIComponent(sessionId) + "/kill", {
-          method: "POST",
-        })
+
+        return apiFetch(
+          "/sessions/" + encodeURIComponent(sessionId) + "/kill",
+          {
+            method: "POST",
+          }
+        )
           .then(() =>
-            apiFetch("/sessions/" + encodeURIComponent(sessionId)).then((session) => {
+            apiFetch(
+              "/sessions/" + encodeURIComponent(sessionId)
+            ).then((session) => {
               state.session = session;
               updateSessionHeader();
               showStatus("Kill switch pressed for " + sessionId, "ok");
@@ -2246,11 +1745,16 @@ Waiting for export…
 
       function refreshLogs() {
         if (!state.session || !state.session.session_id) {
-          document.getElementById("logsContent").textContent = "No session loaded.";
+          document.getElementById("logsContent").textContent =
+            "No session loaded.";
           return Promise.resolve();
         }
+
         const sessionId = state.session.session_id;
-        return apiFetch("/sessions/" + encodeURIComponent(sessionId) + "/logs?limit=200")
+
+        return apiFetch(
+          "/sessions/" + encodeURIComponent(sessionId) + "/logs?limit=200"
+        )
           .then((resp) => {
             const lines = resp && resp.lines ? resp.lines : [];
             state.logs = lines;
@@ -2276,10 +1780,15 @@ Waiting for export…
           showStatus("No session loaded to clear logs.", "warn");
           return Promise.resolve();
         }
+
         const sessionId = state.session.session_id;
-        return apiFetch("/sessions/" + encodeURIComponent(sessionId) + "/logs", {
-          method: "DELETE",
-        })
+
+        return apiFetch(
+          "/sessions/" + encodeURIComponent(sessionId) + "/logs",
+          {
+            method: "DELETE",
+          }
+        )
           .then(() => {
             showStatus("Logs cleared for " + sessionId, "ok");
             return refreshLogs();
@@ -2296,6 +1805,7 @@ Waiting for export…
           state.logTimer = null;
         }
         if (!enabled) return;
+
         state.logTimer = setInterval(() => {
           if (!state.session || !state.session.session_id) return;
           refreshLogs().catch(() => {});
@@ -2307,6 +1817,7 @@ Waiting for export…
           showStatus("No session loaded for export.", "warn");
           return Promise.resolve();
         }
+
         const sessionId = state.session.session_id;
         const format = state.exportFormat || "json";
         const path =
@@ -2322,11 +1833,15 @@ Waiting for export…
               showStatus("Export completed.", "ok");
               return;
             }
+
             if (resp.format === "json") {
-              updateExportOutput(JSON.stringify(resp.payload, null, 2) + "\n");
+              updateExportOutput(
+                JSON.stringify(resp.payload, null, 2) + "\n"
+              );
             } else {
               updateExportOutput(String(resp.payload || ""));
             }
+
             showStatus("Exported snapshot as " + resp.format, "ok");
           })
           .catch((err) => {
@@ -2339,13 +1854,157 @@ Waiting for export…
         const el = document.getElementById("exportOutput");
         el.value = text || "";
       }
+
+      function startTelemetry() {
+        if (!state.session || !state.session.session_id) {
+          showStatus("No session loaded for telemetry.", "warn");
+          return Promise.resolve();
+        }
+
+        const intervalInput = document.getElementById("telemetryInterval");
+        let intervalMs = parseInt(intervalInput.value, 10);
+        if (!isFinite(intervalMs) || intervalMs < 250) intervalMs = 250;
+        if (intervalMs > 10000) intervalMs = 10000;
+        intervalInput.value = intervalMs;
+
+        if (state.telemetryTimer) {
+          clearInterval(state.telemetryTimer);
+          state.telemetryTimer = null;
+        }
+
+        const btnStart = document.getElementById("btnTelemetryStart");
+        const btnStop = document.getElementById("btnTelemetryStop");
+        btnStart.disabled = true;
+        btnStop.disabled = false;
+
+        return pollTelemetry()
+          .then(() => {
+            showStatus(
+              "Telemetry monitoring started (" + intervalMs + " ms interval).",
+              "ok"
+            );
+            state.telemetryTimer = setInterval(() => {
+              pollTelemetry().catch(() => {});
+            }, intervalMs);
+          })
+          .catch((err) => {
+            showStatus("Telemetry error: " + err.message, "error");
+            btnStart.disabled = false;
+            btnStop.disabled = true;
+            throw err;
+          });
+      }
+
+      function stopTelemetry() {
+        if (state.telemetryTimer) {
+          clearInterval(state.telemetryTimer);
+          state.telemetryTimer = null;
+        }
+        const btnStart = document.getElementById("btnTelemetryStart");
+        const btnStop = document.getElementById("btnTelemetryStop");
+        btnStart.disabled = false;
+        btnStop.disabled = true;
+        showStatus("Telemetry monitoring stopped.", "ok");
+      }
+
+      function pollTelemetry() {
+        if (!state.session || !state.session.session_id) {
+          return Promise.resolve();
+        }
+
+        const sessionId = state.session.session_id;
+        const depthInput = document.getElementById("telemetryDepth");
+        let depth = parseInt(depthInput.value, 10);
+        if (!isFinite(depth) || depth < 8) depth = 8;
+        if (depth > 256) depth = 256;
+        depthInput.value = depth;
+
+        const path =
+          "/sessions/" +
+          encodeURIComponent(sessionId) +
+          "/telemetry?limit=" +
+          depth;
+
+        return apiFetch(path)
+          .then((resp) => {
+            let rows = [];
+            if (Array.isArray(resp)) {
+              rows = resp;
+            } else if (resp && Array.isArray(resp.rows)) {
+              rows = resp.rows;
+            } else if (resp && Array.isArray(resp.data)) {
+              rows = resp.data;
+            }
+            renderTelemetry(rows);
+          })
+          .catch((err) => {
+            // Keep telemetry errors soft so logs/other features still work.
+            showStatus("Telemetry fetch failed: " + err.message, "warn");
+            throw err;
+          });
+      }
+
+      function renderTelemetry(rows) {
+        const tbody = document.getElementById("telemetryTableBody");
+        tbody.innerHTML = "";
+
+        if (!rows || !rows.length) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 6;
+          td.className = "telemetry-empty";
+          td.textContent = "No telemetry yet.";
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+          return;
+        }
+
+        rows.forEach((row) => {
+          const tr = document.createElement("tr");
+          const ts = row.timestamp || row.t || row.time || "";
+          const provider = row.provider || row.backend || row.hardware || "";
+          const fid = formatMaybeNumber(row.fidelity);
+          const lat =
+            typeof row.latency_us === "number" && isFinite(row.latency_us)
+              ? row.latency_us.toFixed(1)
+              : row.latency_us != null
+              ? String(row.latency_us)
+              : "—";
+          const shots = formatShots(row.shots_used || 0);
+          let rate = "—";
+          if (
+            typeof row.shot_rate === "number" &&
+            isFinite(row.shot_rate)
+          ) {
+            rate = row.shot_rate.toFixed(1) + "/s";
+          } else if (row.shot_rate != null) {
+            rate = String(row.shot_rate);
+          }
+
+          [
+            ts || "—",
+            provider || "—",
+            fid,
+            lat,
+            shots,
+            rate,
+          ].forEach((val) => {
+            const td = document.createElement("td");
+            td.textContent = val;
+            tr.appendChild(td);
+          });
+
+          tbody.appendChild(tr);
+        });
+      }
+
+      function formatMaybeNumber(v) {
+        if (typeof v === "number" && isFinite(v)) {
+          return v.toFixed(3);
+        }
+        return v != null ? String(v) : "—";
+      }
     })();
   </script>
 </body>
 </html>
-}
-
-
-
-
-
