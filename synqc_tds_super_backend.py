@@ -90,6 +90,13 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
+# Import the LLM agent (optional; only used if OPENAI_API_KEY is set)
+try:
+    from synqc_agent import SynQcAgent, AgentSuggestion
+    _AGENT_AVAILABLE = True
+except ImportError:
+    _AGENT_AVAILABLE = False
+
 # Optional fast JSON serializer: use orjson when available for speed
 try:
     import orjson
@@ -792,8 +799,17 @@ app.add_middleware(
 
 store = StateStore(STATE_DIR)
 engine = SynQcEngine()
+agent: Optional[SynQcAgent] = None  # LLM-based advisory agent
 _flusher_task: Optional[asyncio.Task] = None
 _flusher_stop: Optional[asyncio.Event] = None
+
+# Initialize the LLM agent if available and API key is set
+if _AGENT_AVAILABLE and os.getenv("OPENAI_API_KEY"):
+    try:
+        agent = SynQcAgent()
+    except Exception:
+        # If agent init fails, continue without it (graceful degradation)
+        pass
 
 
 async def _session_flusher_loop(stop_event: asyncio.Event, interval: float) -> None:
@@ -912,12 +928,64 @@ class RunResponse(BaseModel):
     session: SessionSummary
 
 
+class AgentRequest(BaseModel):
+    goal: str = Field(
+        ...,
+        description=(
+            "High-level experimental goal, e.g. 'maximize fidelity under 20k shots' "
+            "or 'minimize latency while maintaining fidelity above 0.97'."
+        ),
+    )
+    max_retries: int = Field(3, ge=1, le=10, description="Max LLM retries on parse errors.")
+
+
+class AgentSuggestionResponse(BaseModel):
+    recommended_config: RunConfiguration = Field(
+        ..., description="Full validated suggested configuration."
+    )
+    rationale: str = Field(..., description="Why the agent made this suggestion.")
+    warnings: List[str] = Field(default_factory=list, description="Potential risks or caveats.")
+    changes_applied: Dict[str, Any] = Field(
+        default_factory=dict, description="Diff of changes from current config."
+    )
+
+
 # -------------------------------------------------------------------------
 # Helper functions
 # -------------------------------------------------------------------------
 
 
 def _derive_mode_label(target: HardwareTarget) -> str:
+    """Derive a label for the target hardware from its name."""
+    parts = target.name.lower().split("_")
+    return " ".join(p.capitalize() for p in parts)
+
+
+def _session_snapshot_for_agent(st: SessionState) -> Dict[str, Any]:
+    """Build a compact snapshot for LLM agent analysis."""
+    k = st.last_kpis or KpiBundle.from_raw(
+        fidelity=0.0,
+        latency_us=0.0,
+        backaction=0.0,
+        shots_used=st.shots_used,
+        shot_limit=st.shot_limit,
+    )
+    return {
+        "session_id": st.session_id,
+        "created_at": st.created_at.isoformat(),
+        "status": st.status.value,
+        "mode_label": st.mode_label,
+        "current_config": st.config.model_dump(),
+        "shots_used": st.shots_used,
+        "shot_limit": st.shot_limit,
+        "last_kpis": {
+            "fidelity": k.fidelity,
+            "latency_us": k.latency_us,
+            "backaction": k.backaction,
+            "shots_used_fraction": k.shots_used_fraction,
+        },
+    }
+
     if target == HardwareTarget.SIM_LOCAL:
         return "Local Simulation"
     if target == HardwareTarget.CLASSICAL_ONLY:
@@ -1196,6 +1264,92 @@ def get_telemetry(
 
     rows = st.telemetry[-limit:]
     return {"session_id": session_id, "rows": rows}
+
+
+# --- Agent suggestions (LLM-powered advisory) -------------------------
+
+
+@app.post(f"{API_PREFIX}/sessions/{{session_id}}/agent-suggestion", response_model=AgentSuggestionResponse)
+async def get_agent_suggestion(
+    session_id: str,
+    req: AgentRequest,
+) -> AgentSuggestionResponse:
+    """
+    Ask the LLM agent for a configuration suggestion for the next run.
+
+    This endpoint requires OPENAI_API_KEY to be set and the agent to be initialized.
+    It is purely advisory — the suggestion is never applied automatically.
+
+    Returns a full validated RunConfiguration, rationale, warnings, and diff of changes.
+    """
+    if agent is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Agent not available. Ensure OPENAI_API_KEY is set and synqc_agent "
+                "module is installed."
+            ),
+        )
+
+    st = store.get_session(session_id)
+    if st is None:
+        raise HTTPException(status_code=404, detail=f"Session {session_id!r} not found.")
+
+    # Build compact snapshot for agent
+    snapshot = _session_snapshot_for_agent(st)
+
+    try:
+        # Run agent in a thread to avoid blocking event loop
+        suggestion = await asyncio.to_thread(
+            agent.suggest,
+            session_snapshot=snapshot,
+            goal=req.goal,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Agent error: {str(exc)[:200]}",
+        ) from exc
+
+    # Parse suggested config dict into a RunConfiguration
+    suggested_dict = suggestion.recommended_config
+    try:
+        suggested_cfg = RunConfiguration(**suggested_dict)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Agent response failed validation: {str(exc)[:200]}",
+        ) from exc
+
+    # Apply the suggestion as an in-memory patch (don't persist)
+    current_dict = st.config.model_dump()
+    changes = {}
+    for key, value in suggested_dict.items():
+        if key in current_dict and current_dict[key] != value:
+            changes[key] = {"old": current_dict[key], "new": value}
+
+    # Re-enforce hard limits as belt-and-braces validation
+    clamped_cfg = RunConfiguration(
+        **{
+            **suggested_cfg.model_dump(),
+            "shot_limit": min(suggested_cfg.shot_limit, MAX_SHOTS_PER_RUN),
+        }
+    )
+
+    # Log the suggestion for auditing
+    print(
+        f"Agent suggested config for session {session_id}: "
+        f"goal={req.goal!r}, changes={changes}"
+    )
+
+    return AgentSuggestionResponse(
+        recommended_config=clamped_cfg,
+        rationale=suggestion.rationale,
+        warnings=suggestion.warnings,
+        changes_applied=changes,
+    )
 
 
 # --- Export snapshot --------------------------------------------------
