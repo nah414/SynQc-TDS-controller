@@ -2343,13 +2343,8 @@ Waiting for export…
   </script>
 </body>
 </html>
-async function fetchQuickstartConfig() {
-  const res = await fetch("http://localhost:8000/api/quickstart-config");
-  if (!res.ok) {
-    throw new Error("Failed to fetch SynQc quickstart config");
-  }
-  return await res.json(); // { sample_rate_hz, lo_frequency_hz, ..., pulses: [...] }
-}
+
+
 
 
 
