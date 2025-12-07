@@ -61,8 +61,6 @@ Or, for local testing only:
     python synqc_tds_super_backend.py
 """
 
-from __future__ import annotations
-
 import json
 import math
 import os

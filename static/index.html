@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SynQc TDS Controller</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        margin: 2rem auto;
+        max-width: 720px;
+        line-height: 1.5;
+        color: #0f172a;
+      }
+      header {
+        margin-bottom: 1.5rem;
+      }
+      .card {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin: 0.5rem 0 0.25rem;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+      }
+      button {
+        margin-top: 1rem;
+        padding: 0.75rem 1.25rem;
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      pre {
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>SynQc Temporal Dynamics Series</h1>
+      <p>Run local mock experiments via the FastAPI backend.</p>
+    </header>
+
+    <section class="card">
+      <h2>Run configuration</h2>
+      <form id="run-form">
+        <label for="hardware">Hardware target</label>
+        <select id="hardware" required>
+          <option value="mock-local">mock-local</option>
+        </select>
+
+        <label for="sequence">Sequence ID</label>
+        <input id="sequence" type="text" value="ramsey-demo" required />
+
+        <label for="cycles">Cycles</label>
+        <input id="cycles" type="number" min="1" value="4" required />
+
+        <label for="shots">Shot limit</label>
+        <input id="shots" type="number" min="1" value="2048" required />
+
+        <label for="session">Session ID</label>
+        <input id="session" type="text" value="example-session-001" required />
+
+        <label for="seed">Seed (optional)</label>
+        <input id="seed" type="number" />
+
+        <button type="submit">Run experiment</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Result</h2>
+      <pre id="result">Waiting for a run...</pre>
+    </section>
+
+    <script>
+      const resultEl = document.getElementById("result");
+      const form = document.getElementById("run-form");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        resultEl.textContent = "Submitting run...";
+
+        const payload = {
+          config: {
+            hardware_target: document.getElementById("hardware").value,
+            sequence_id: document.getElementById("sequence").value,
+            cycles: Number(document.getElementById("cycles").value),
+            shot_limit: Number(document.getElementById("shots").value),
+            metadata: {},
+          },
+          session: {
+            session_id: document.getElementById("session").value,
+            seed: document.getElementById("seed").value
+              ? Number(document.getElementById("seed").value)
+              : null,
+            cache: {},
+          },
+          mode: "run",
+        };
+
+        try {
+          const response = await fetch("/run", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+
+          const body = await response.json();
+          const pretty = JSON.stringify(body, null, 2);
+          resultEl.textContent = pretty;
+        } catch (error) {
+          resultEl.textContent = `Request failed: ${error}`;
+        }
+      });
+    </script>
+  </body>
+</html>
