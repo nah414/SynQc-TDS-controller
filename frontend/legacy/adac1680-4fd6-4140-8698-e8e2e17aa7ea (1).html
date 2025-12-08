@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SynQc TDS — Interstellar Control Console</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg-main: #020318;
+      --bg-panel: #090b1c;
+      --bg-panel-alt: #0f1224;
+      --accent: #53a8ff;
+      --accent-soft: rgba(83, 168, 255, 0.16);
+      --accent-strong: #ffdd6e;
+      --danger: #ff5468;
+      --border-subtle: #262a3f;
+      --text-main: #f7f8ff;
+      --text-muted: #a4a7c7;
+      --text-soft: #7a7da0;
+      --radius-lg: 16px;
+      --radius-md: 11px;
+      --radius-pill: 999px;
+      --shadow-soft: 0 22px 60px rgba(0, 0, 0, 0.7);
+      --shadow-subtle: 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 20% -10%, #2e3c7f 0, transparent 55%),
+        radial-gradient(circle at 80% 10%, #5a2f7e 0, transparent 55%),
+        radial-gradient(circle at 10% 90%, #224c6f 0, transparent 55%),
+        radial-gradient(circle at 90% 80%, #5f2f5f 0, transparent 55%),
+        #020318;
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* starfield overlay */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.65), transparent),
+        radial-gradient(1px 1px at 30% 80%, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 70% 10%, rgba(255,255,255,0.7), transparent),
+        radial-gradient(1px 1px at 90% 70%, rgba(255,255,255,0.6), transparent),
+        radial-gradient(circle at 20% 30%, rgba(111, 179, 255, 0.25), transparent 55%),
+        radial-gradient(circle at 80% 70%, rgba(255, 182, 132, 0.25), transparent 55%);
+      opacity: 0.42;
+      mix-blend-mode: screen;
+      z-index: -1;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.75rem;
+    }
+
+    header.app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 1.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(103, 154, 255, 0.22), transparent 60%),
+        radial-gradient(circle at 100% 0%, rgba(227, 139, 255, 0.22), transparent 55%),
+        linear-gradient(to right, rgba(5, 7, 20, 0.96), rgba(8, 11, 32, 0.96));
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      position: relative;
+    }
+
+    .attribution {
+      position: absolute;
+      top: 0.75rem;
+      right: 1.75rem;
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--accent-strong);
+      text-transform: uppercase;
+      font-style: italic;
+      text-shadow: 0 0 12px rgba(255, 221, 110, 0.3);
+      font-family: Georgia, serif;
+      text-decoration: underline dashed var(--accent-strong);
+      text-decoration-skip-ink: auto;
+    }
+
+    .logo-block {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+
+    .logo-dot {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 35% 30%, #ffffff 0, #d2e8ff 12%, transparent 55%),
+        conic-gradient(from 210deg, #53a8ff, #9b5cff, #ffdd6e, #53a8ff);
+      box-shadow:
+        0 0 40px rgba(83, 168, 255, 0.9),
+        0 0 0 1px rgba(255, 255, 255, 0.18);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo-dot::after {
+      content: "";
+      position: absolute;
+      inset: 35%;
+      border-radius: inherit;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      opacity: 0.7;
+    }
+
+    .logo-block h1 {
+      font-size: 1.15rem;
+    }
+
+    .logo-block p {
+      font-size: 0.78rem;
+      color: var(--text-soft);
+      margin-top: 0.1rem;
+    }
+
+    .session-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.1rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .session-info span {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .status-pill {
+      padding: 0.2rem 0.7rem;
+      border-radius: var(--radius-pill);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.72rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(83, 168, 255, 0.9);
+    }
+
+    #globalStatus {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      bottom: 1.25rem;
+      padding: 0.42rem 1rem;
+      border-radius: var(--radius-pill);
+      background: rgba(7, 9, 26, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      max-width: 90vw;
+      z-index: 40;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #globalStatus.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+
+    #globalStatus[data-level="ok"] {
+      border-color: rgba(83, 168, 255, 0.7);
+      color: #c0dcff;
+    }
+
+    #globalStatus[data-level="error"] {
+      border-color: rgba(255, 84, 104, 0.8);
+      color: #ffd4dc;
+    }
+
+    #globalStatus[data-level="warn"] {
+      border-color: rgba(255, 221, 110, 0.8);
+      color: #fff1c5;
+    }
+
+    main.app-grid {
+      display: grid;
+      grid-template-columns: minmax(260px, 280px) minmax(320px, 3fr) minmax(260px, 320px);
+      grid-auto-rows: minmax(160px, auto);
+      gap: 1rem;
+      padding: 1rem 1.5rem 2.5rem;
+    }
+
+    .panel {
+      background:
+        radial-gradient(circle at 0% 0%, rgba(117, 153, 255, 0.14), transparent 55%),
+        radial-gradient(circle at 100% 100%, rgba(255, 176, 117, 0.12), transparent 55%),
+        linear-gradient(to bottom right, rgba(9, 11, 31, 0.98), rgba(6, 7, 24, 0.98));
+      border-radius: var(--radius-lg);
+      padding: 0.9rem 1rem 1.1rem;
+      box-shadow: var(--shadow-soft), var(--shadow-subtle);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(255,255,255,0.04), transparent 55%),
+        radial-gradient(circle at 80% 0%, rgba(121, 159, 255, 0.07), transparent 55%);
+      opacity: 0.6;
+      pointer-events: none;
+      mix-blend-mode: soft-light;
+    }
+
+    .panel > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .panel h2 {
+      font-size: 0.95rem;
+      margin-bottom: 0.15rem;
+    }
+
+    .panel h3 {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+    }
+
+    .panel--backend {
+      grid-column: 1 / 2;
+      grid-row: 1 / 3;
+    }
+
+    .panel--config {
+      grid-column: 2 / 3;
+      grid-row: 1 / 2;
+    }
+
+    .panel--kpi {
+      grid-column: 3 / 4;
+      grid-row: 1 / 2;
+    }
+
+    .panel--telemetry {
+      grid-column: 2 / 4;
+      grid-row: 2 / 3;
+    }
+
+    .panel--log {
+      grid-column: 1 / 3;
+      grid-row: 3 / 4;
+    }
+
+    .panel--export {
+      grid-column: 3 / 4;
+      grid-row: 3 / 4;
+    }
+
+    label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 0.22rem;
+      margin-bottom: 0.3rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      background: rgba(4, 6, 20, 0.96);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      padding: 0.45rem 0.55rem;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      outline: none;
+      transition:
+        border 0.15s ease,
+        background 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.05s ease;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(83, 168, 255, 0.4);
+      background: rgba(4, 7, 24, 1);
+      transform: translateY(-0.5px);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 70px;
+      max-height: 260px;
+      line-height: 1.3;
+    }
+
+    @media (max-width: 1024px) {
+      main.app-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        grid-column: auto;
+        grid-row: auto;
+      }
+    }
+
+    @media (max-width: 640px) {
+      header.app-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.7rem;
+      }
+
+      .session-info {
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="attribution">Developed by <strong>eVision Enterprises</strong></div>
+    <div class="logo-block">
+      <div class="logo-dot"></div>
+      <div>
+        <h1>SynQc Temporal Dynamics Series</h1>
+        <p>Interstellar Drive–Probe–Drive Control Console</p>
+      </div>
+    </div>
+    <div class="session-info">
+      <div>Mode: <span id="sessionModeLabel">Local Simulation</span></div>
+      <div>Session: <span id="sessionId">—</span></div>
+      <div>Shots (this session): <span id="shotsCounter">0</span></div>
+      <div>
+        <span class="status-pill">
+          <span class="status-dot"></span>
+          <span id="sessionStatus">No session yet</span>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <div id="globalStatus" data-level="ok">Ready.</div>
+
+  <main class="app-grid">
+    <!-- Backend & Session -->
+    <section class="panel panel--backend">
+      <h2>Backend & Session</h2>
+      <label for="apiBase">
+        API base URL
+        <input
+          id="apiBase"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="http://localhost:8000/api/v1/synqc"
+        />
+      </label>
+    </section>
+  </main>
+
+  <!-- This is a legacy frontend. See frontend/legacy/ folder documentation. -->
+  <script>
+    // Legacy frontend stub - refer to synqc_control_panel.html for active frontend
+    document.addEventListener("DOMContentLoaded", function() {
+      console.log("This is a legacy SynQc frontend. Please use synqc_control_panel.html instead.");
+    });
+  </script>
+</body>
+</html>

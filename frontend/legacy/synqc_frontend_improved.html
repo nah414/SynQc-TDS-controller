@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SynQc Temporal Dynamics Series – Control Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      color-scheme: dark;
+      
+      /* Enhanced color palette */
+      --bg-primary: #0a0e27;
+      --bg-secondary: #131629;
+      --bg-tertiary: #1a1f3a;
+      --bg-surface: #242d4f;
+      
+      --border-soft: #2a3454;
+      --border-mid: #3a4570;
+      --border-bright: #4a5580;
+      
+      --accent-cyan: #00d9ff;
+      --accent-cyan-soft: rgba(0, 217, 255, 0.08);
+      --accent-cyan-glow: rgba(0, 217, 255, 0.2);
+      
+      --accent-purple: #b366ff;
+      --accent-purple-soft: rgba(179, 102, 255, 0.08);
+      
+      --accent-emerald: #00ffaa;
+      --accent-emerald-soft: rgba(0, 255, 170, 0.08);
+      
+      --text-primary: #f0f4ff;
+      --text-secondary: #b0b8d4;
+      --text-tertiary: #7a8ab0;
+      
+      --success: #00ffaa;
+      --warning: #ffa500;
+      --danger: #ff6b6b;
+      
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, var(--bg-primary) 0%, #0f1535 50%, var(--bg-primary) 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* --- HEADER --- */
+    header {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border-soft);
+      background: linear-gradient(90deg, 
+        rgba(10, 14, 39, 0.96) 0%,
+        rgba(15, 24, 60, 0.94) 50%,
+        rgba(10, 14, 39, 0.96) 100%);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      box-shadow: 0 8px 32px rgba(0, 217, 255, 0.08);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex: 1;
+    }
+
+    .header-branding h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-branding .tagline {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+      letter-spacing: 0.05em;
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 320px 1fr 320px;
+      gap: 20px;
+      padding: 20px 32px;
+      max-width: 2400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    section {
+      background: linear-gradient(135deg, 
+        rgba(18, 25, 50, 0.98) 0%,
+        rgba(20, 28, 55, 0.96) 100%);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-soft);
+      padding: 24px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+    }
+
+    section h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    code {
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 11px;
+      background: rgba(0, 217, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent-cyan);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-branding">
+      <h1>SynQc TDS</h1>
+      <div class="tagline">Interstellar Control Console (Legacy)</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section>
+    <h2>Legacy Frontend</h2>
+    <p style="color: #7a8ab0; line-height: 1.6;">
+      This is a legacy frontend interface. It has been archived in <code>frontend/legacy/</code> 
+      for reference and historical documentation.
+    </p>
+    <p style="color: #7a8ab0; line-height: 1.6; margin-top: 12px;">
+      Please use <code>synqc_control_panel.html</code> (the main active frontend) instead.
+      It includes all current features, performance optimizations, and LLM agent integration.
+    </p>
+  </section>
+</main>
+
+</body>
+</html>

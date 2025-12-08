@@ -70,7 +70,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Literal
 import asyncio
 from threading import local as _thread_local_class
 import threading
@@ -350,6 +350,7 @@ class RunRecord(BaseModel):
     config_snapshot: RunConfiguration
     created_at: datetime
     kpis: Optional[KpiBundle] = None
+    measurements: List[Dict[str, Any]] = Field(default_factory=list)
     events: List[str] = Field(default_factory=list)
 
 
@@ -435,6 +436,9 @@ class SynQcEngine:
         )
         events = self._explain_kpis(cfg, kpis, mode)
 
+        # synthesize per-qubit measurement payload for visualizer
+        measurements = self._synthesize_measurements(cfg, kpis.fidelity)
+
         session.last_run_id = run_id
         session.last_updated_at = created_at
         session.last_kpis = kpis
@@ -461,6 +465,7 @@ class SynQcEngine:
             config_snapshot=cfg.copy(deep=True),
             created_at=created_at,
             kpis=kpis,
+            measurements=measurements,
             events=events,
         )
 
@@ -668,6 +673,22 @@ class SynQcEngine:
             events.append("[BUDGET] CAUTION: Shot usage high; plan refills.")
 
         return events
+
+    def _synthesize_measurements(self, cfg: RunConfiguration, fidelity: float, num_qubits: int = 4) -> List[Dict[str, Any]]:
+        """Create a simple measurement list compatible with the frontend visualizer.
+
+        Each measurement dict contains {qubit, p0, p1, last}.
+        """
+        rng = _get_thread_rng()
+        out: List[Dict[str, Any]] = []
+        for q in range(num_qubits):
+            # create p1 biased around fidelity with per-qubit jitter
+            jitter = float(rng.normal(0.0, 0.06))
+            p1 = max(0.0, min(1.0, 0.5 * fidelity + 0.5 * float(rng.uniform(0.0, 1.0)) + jitter))
+            p0 = 1.0 - p1
+            last = int(rng.random() < p1)
+            out.append({"qubit": q, "p0": p0, "p1": p1, "last": last})
+        return out
 
 
 # -------------------------------------------------------------------------
@@ -986,6 +1007,22 @@ class AgentSuggestionResponse(BaseModel):
     changes_applied: Dict[str, Any] = Field(
         default_factory=dict, description="Diff of changes from current config."
     )
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ChatRequest(BaseModel):
+    session_id: Optional[str] = None
+    message: str
+    history: List[ChatMessage] = Field(default_factory=list)
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    session_id: Optional[str] = None
 
 
 # -------------------------------------------------------------------------
@@ -1388,6 +1425,37 @@ async def get_agent_suggestion(
         warnings=suggestion.warnings,
         changes_applied=changes,
     )
+
+
+# ---------- Chat endpoint (simple echo / passthrough to agent) ----------
+
+
+@app.post(f"{API_PREFIX}/chat", response_model=ChatResponse)
+async def chat_endpoint(body: ChatRequest) -> ChatResponse:
+    """Minimal chat endpoint. If a SynQcAgent is available, defer to it; otherwise echo."""
+    session_part = f" (session {body.session_id})" if body.session_id else ""
+
+    # If a richer agent is configured, try to use it (run in thread)
+    if agent is not None and hasattr(agent, "chat"):
+        try:
+            # run agent.chat in thread if it's blocking
+            reply = await asyncio.to_thread(agent.chat, body.message, body.history)
+            if isinstance(reply, dict) and "reply" in reply:
+                text = reply.get("reply")
+            else:
+                text = str(reply)
+            return ChatResponse(reply=text, session_id=body.session_id)
+        except Exception:
+            # Fall through to fallback reply
+            pass
+
+    # Fallback echo-style pseudo-reply (safe, deterministic)
+    last = (body.message or "").strip()
+    reply = (
+        f"Pseudo-agent{session_part}: you said '{last}'. "
+        "Wire this endpoint to a real model to get richer guidance."
+    )
+    return ChatResponse(reply=reply, session_id=body.session_id)
 
 
 # --- Export snapshot --------------------------------------------------
